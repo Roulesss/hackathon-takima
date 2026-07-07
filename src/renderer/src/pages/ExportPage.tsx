@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, FileImage, Code, FileText, Download } from 'lucide-react'
+import { ArrowLeft, FileImage, Code, FileText, Download, Printer } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Card } from '@renderer/components/common'
@@ -36,6 +36,10 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
   const [bcResolution, setBcResolution] = useState<number>(2)
   const { exportQr, exporting, error } = useExport()
+    if (activityType === 'document' && templateMimeType) {
+      if (templateMimeType === 'application/pdf' && selectedFormat !== 'pdf') setSelectedFormat('pdf')
+      if (templateMimeType.startsWith('image/') && selectedFormat !== 'png') setSelectedFormat('png')
+    }
   const qrRef = useRef<HTMLDivElement>(null)
   const bcRef = useRef<HTMLDivElement>(null)
   
@@ -96,6 +100,42 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
     }
   }, [templateBytes, templateMimeType, templateOptions, qrConfig, selectedFormat])
 
+  const handlePrint = async (): Promise<void> => {
+    try {
+      let printUrl = ''
+      
+      if (activityType === 'business-card' && bcRef.current && businessCardConfig) {
+        const dataUrl = await htmlToImage.toPng(bcRef.current, { quality: 1, pixelRatio: bcResolution })
+        printUrl = dataUrl
+      } else if (activityType === 'document' && templateBytes && templateMimeType) {
+        if (pdfPreviewUrl) {
+          printUrl = pdfPreviewUrl.split('#')[0] // Remove #page=... if present
+        }
+      } else {
+        const blob = await exportQrAsBlob(qrConfig, selectedFormat === 'svg' ? 'svg' : 'png')
+        if (blob) printUrl = URL.createObjectURL(blob)
+      }
+
+      if (printUrl) {
+        const iframe = document.createElement('iframe')
+        iframe.style.display = 'none'
+        iframe.src = printUrl
+        document.body.appendChild(iframe)
+        iframe.onload = () => {
+          setTimeout(() => {
+            iframe.contentWindow?.print()
+            setTimeout(() => {
+              document.body.removeChild(iframe)
+              if (printUrl.startsWith('blob:')) URL.revokeObjectURL(printUrl)
+            }, 1000)
+          }, 500)
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const handleExport = async (): Promise<void> => {
     if (activityType === 'business-card' && bcRef.current && businessCardConfig) {
       try {
@@ -110,14 +150,17 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
       } catch (err) {
         console.error('Failed to export business card', err)
       }
-    } else if (templateBytes && templateMimeType) {
+    } else if (activityType === 'document' && templateBytes && templateMimeType) {
       exportQr(qrConfig, selectedFormat, undefined, {
         templateBytes: templateBytes,
         templateMimeType: templateMimeType,
+        batchNaming,
         ...templateOptions
       })
     } else {
-      exportQr(qrConfig, selectedFormat)
+      exportQr(qrConfig, selectedFormat, undefined, {
+        x: 0, y: 0, size: 0, pageIndex: 0, batchNaming
+      })
     }
   }
 
@@ -149,7 +192,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
           <span className="export-preview__info-label">Type</span>
           <span className="export-preview__info-value">{activityType === 'business-card' ? 'Carte de visite' : 'QR Code'}</span>
         </div>
-        {activityType !== 'business-card' && (
+        {activityType === 'qr-code' && (
           <div className="export-preview__info-row">
             <span className="export-preview__info-label">Taille</span>
             <span className="export-preview__info-value">{qrConfig.size}px</span>
@@ -167,7 +210,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
     <div className="export-config">
       <h2 className="export-config__title">Format d'exportation</h2>
 
-      {activityType !== 'business-card' && (
+      {activityType === 'qr-code' && (
         <div className="export-config__formats">
           {FORMAT_OPTIONS.map(({ format, icon: Icon, title, description }) => (
             <Card
@@ -184,6 +227,23 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
               <p className="export-config__format-desc">{description}</p>
             </Card>
           ))}
+        </div>
+      )}
+
+      {activityType === 'document' && templateMimeType && (
+        <div className="export-config__formats">
+          <Card
+            padding="md"
+            className="export-config__format-card export-config__format-card--active"
+          >
+            <div className="export-config__format-header">
+              {templateMimeType === 'application/pdf' ? <FileText className="export-config__format-icon" /> : <FileImage className="export-config__format-icon" />}
+              <span className="export-config__format-title">
+                {templateMimeType === 'application/pdf' ? 'PDF Document' : 'Image Document'}
+              </span>
+            </div>
+            <p className="export-config__format-desc">Document fusionné avec votre QR Code prêt à être partagé ou imprimé</p>
+          </Card>
         </div>
       )}
 
@@ -230,7 +290,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
 
       <div className="export-config__divider" />
 
-      {activityType !== 'business-card' && (
+      {activityType === 'qr-code' && (
         <div className="export-config__batch">
           <h3 className="export-config__batch-title">Options batch</h3>
           <div className="export-config__batch-field">
@@ -252,16 +312,28 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
         </div>
       )}
 
-      <Button
-        variant="primary"
-        size="lg"
-        icon={Download}
-        fullWidth
-        onClick={handleExport}
-        disabled={exporting}
-      >
-        {exporting ? 'Export en cours...' : activityType === 'business-card' ? 'Exporter la carte (PNG)' : `Exporter en ${selectedFormat.toUpperCase()}`}
-      </Button>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <Button
+          variant="secondary"
+          size="lg"
+          icon={Printer}
+          onClick={handlePrint}
+          disabled={exporting}
+          style={{ flex: 1 }}
+        >
+          Imprimer
+        </Button>
+        <Button
+          variant="primary"
+          size="lg"
+          icon={Download}
+          onClick={handleExport}
+          disabled={exporting}
+          style={{ flex: 2 }}
+        >
+          {exporting ? 'Export en cours...' : activityType === 'business-card' ? 'Exporter (PNG)' : activityType === 'document' ? 'Exporter Document' : `Exporter en ${selectedFormat.toUpperCase()}`}
+        </Button>
+      </div>
     </div>
   )
 

@@ -13,6 +13,7 @@ export interface TemplateExportOptions {
   y: number
   size: number
   pageIndex: number
+  batchNaming?: string
 }
 
 export function useExport() {
@@ -33,7 +34,8 @@ export function useExport() {
       setExporting(true)
       setError(null)
       try {
-        const urls = (config.batchUrls && config.batchUrls.length > 0) ? config.batchUrls : [config.url]
+                const validUrls = (config.batchUrls && config.batchUrls.length > 0) ? config.batchUrls.filter(u => u.trim() !== '') : [config.url]
+        const urls = validUrls.length > 0 ? validUrls : [config.url]
         
         if (urls.length > 1) {
           // Batch export
@@ -79,7 +81,8 @@ export function useExport() {
               
               if (blob) {
                 const arrayBuffer = await blob.arrayBuffer()
-                zip.file(`qr-${i + 1}.${fileExtension}`, arrayBuffer)
+                                const naming = options?.batchNaming || 'qr_{index}'
+                zip.file(`${naming.replace('{index}', String(i + 1))}.${fileExtension}`, arrayBuffer)
               }
             }
             
@@ -133,7 +136,8 @@ export function useExport() {
               }
               
               if (blob) {
-                downloadBlob(blob, `qr-${i + 1}.${fileExtension}`)
+                                const naming = options?.batchNaming || 'qr_{index}'
+                downloadBlob(blob, `${naming.replace('{index}', String(i + 1))}.${fileExtension}`)
               }
             }
           }
