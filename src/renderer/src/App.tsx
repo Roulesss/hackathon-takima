@@ -11,7 +11,7 @@ export type PageId = 'home' | 'activity-choice' | 'editor' | 'scanner' | 'export
 function App(): React.JSX.Element {
   const [currentPage, setCurrentPage] = useState<PageId>('home')
   const [currentActivity, setCurrentActivity] = useState<ActivityType>('qr-code')
-  const { config: qrConfig, setConfig: setQrConfig } = useQrConfig()
+  const { config: qrConfig, setConfig: setQrConfig, resetConfig } = useQrConfig()
   const { projects, deleteProject, addProject } = useProjects()
 
   const [templateBytes, setTemplateBytes] = useState<Uint8Array | null>(null)
@@ -30,6 +30,8 @@ function App(): React.JSX.Element {
       if (project) {
         setQrConfig(project.qrConfig)
       }
+    } else if (page === 'editor' && currentPage !== 'editor' && !data?.config && !data?.projectId) {
+      resetConfig()
     }
   }
 

@@ -6,6 +6,7 @@
   align-items: center;
   padding: var(--space-10) var(--space-7);
   position: relative;
+  -webkit-app-region: drag;
 }
 
 .home__content {
@@ -61,6 +62,7 @@
 
 .home__project-card {
   position: relative;
+  -webkit-app-region: no-drag;
 }
 
 .home__project-preview {
@@ -163,6 +165,14 @@
   position: fixed;
   bottom: var(--space-5);
   right: var(--space-5);
+  -webkit-app-region: no-drag;
+}
+
+.home__scan-btn {
+  position: fixed;
+  top: var(--space-5);
+  right: var(--space-5);
+  -webkit-app-region: no-drag;
 }
 
 /* Settings modal */

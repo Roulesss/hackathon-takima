@@ -5,21 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4101573a-d58f-4661-9db6-93b19f1c74df" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/index.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/renderer/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Button.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Card.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/IconButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/IconButton.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Modal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Tabs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Tabs.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/layout/SplitLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/layout/SplitLayout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/layout/Toolbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/layout/Toolbar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/hooks/useExport.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/hooks/useExport.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/layout/Toolbar.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/layout/Toolbar.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ActivityChoicePage.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ActivityChoicePage.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ActivityChoicePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ActivityChoicePage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/EditorPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/EditorPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ExportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ExportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/HomePage.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/HomePage.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/HomePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/HomePage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ScannerPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ScannerPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/utils/qrGenerator.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/utils/qrGenerator.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,7 +77,7 @@
       <option name="presentableId" value="Default" />
       <updated>1783413512243</updated>
       <workItem from="1783413513263" duration="1019000" />
-      <workItem from="1783425741494" duration="312000" />
+      <workItem from="1783425741494" duration="2144000" />
     </task>
     <servers />
   </component>
