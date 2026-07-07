@@ -1,4 +1,4 @@
-import { QrCode, CreditCard, FileImage, ScanLine, ArrowLeft } from 'lucide-react'
+import { QrCode, CreditCard, FileImage, ArrowLeft } from 'lucide-react'
 import { Card, IconButton } from '@renderer/components/common'
 import './ActivityChoicePage.css'
 
@@ -27,13 +27,6 @@ const activities = [
     title: 'Intégrer à un document',
     description: 'Ajoutez un QR code à une image ou un document PDF existant',
     page: 'editor'
-  },
-  {
-    id: 'scanner',
-    icon: ScanLine,
-    title: 'Scanner un QR Code',
-    description: 'Décodez un QR code à partir d\'une image importée',
-    page: 'scanner'
   }
 ]
 

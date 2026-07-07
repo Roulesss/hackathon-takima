@@ -359,7 +359,7 @@ export function EditorPage({
         left={
           <IconButton
             icon={ArrowLeft}
-            onClick={() => onNavigate('activity-choice')}
+            onClick={() => onNavigate('home')}
             tooltip="Retour"
           />
         }

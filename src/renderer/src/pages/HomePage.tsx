@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Settings, QrCode, Trash2 } from 'lucide-react'
+import { Plus, Settings, QrCode, Trash2, ScanLine } from 'lucide-react'
 import { Button, IconButton, Card, SettingsModal, ProjectThumbnail } from '@renderer/components/common'
 import type { ProjectConfig } from '@renderer/types'
 import './HomePage.css'
@@ -135,6 +135,15 @@ export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProp
           </div>
         )}
       </div>
+
+      <IconButton
+        icon={ScanLine}
+        className="home__scan-btn"
+        tooltip="Scanner un QR Code"
+        size="lg"
+        variant="subtle"
+        onClick={() => onNavigate('scanner')}
+      />
 
       <IconButton
         icon={Settings}

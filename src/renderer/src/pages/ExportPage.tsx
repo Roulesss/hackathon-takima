@@ -27,7 +27,6 @@ const FORMAT_OPTIONS: Array<{
 export function ExportPage({ onNavigate, qrConfig }: ExportPageProps): React.JSX.Element {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('png')
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
-  const [batchZip, setBatchZip] = useState(false)
   const { exportQr, exporting, error } = useExport()
   const qrRef = useRef<HTMLDivElement>(null)
 
@@ -104,15 +103,6 @@ export function ExportPage({ onNavigate, qrConfig }: ExportPageProps): React.JSX
             placeholder="qr_{index}"
           />
         </div>
-        <label className="export-config__checkbox-row">
-          <input
-            type="checkbox"
-            checked={batchZip}
-            onChange={(e) => setBatchZip(e.target.checked)}
-          />
-          <span>Exporter en ZIP</span>
-        </label>
-        <p className="export-config__batch-note">🚧 Fonctionnalité batch en développement</p>
       </div>
 
       {error && (
