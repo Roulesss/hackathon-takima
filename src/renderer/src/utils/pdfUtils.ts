@@ -35,9 +35,14 @@ export async function addQrToPdf(
   const pages = pdfDoc.getPages()
   const page = pages[options.pageIndex || 0]
 
+  const { height } = page.getSize()
+  
+  const pdfX = options.x - options.size / 2
+  const pdfY = height - options.y - options.size / 2
+
   page.drawImage(qrImage, {
-    x: options.x,
-    y: options.y,
+    x: pdfX,
+    y: pdfY,
     width: options.size,
     height: options.size
   })

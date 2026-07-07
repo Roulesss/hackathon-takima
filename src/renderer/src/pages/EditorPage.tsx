@@ -5,7 +5,7 @@ import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
 import { createQrInstance, checkContrast, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
-import { DEFAULT_QR_CONFIG } from '@renderer/types/qr'
+
 import './EditorPage.css'
 
 interface EditorPageProps {
@@ -156,15 +156,26 @@ export function EditorPage({
   const handleRawExport = async (): Promise<void> => {
     const { exportQrAsBlob } = await import('@renderer/utils/qrGenerator')
     const previewUrl = batchUrls.length > 0 ? batchUrls[0] : qrConfig.url
-    const rawConfig = { ...DEFAULT_QR_CONFIG, url: previewUrl }
+    const rawConfig = { ...qrConfig, url: previewUrl }
     const blob = await exportQrAsBlob(rawConfig, 'png')
     if (blob) {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'qr-raw.png'
-      a.click()
-      URL.revokeObjectURL(url)
+      if (window.api && window.api.saveFileDialog) {
+        const arrayBuffer = await blob.arrayBuffer()
+        const { canceled, filePath } = await window.api.saveFileDialog({
+          defaultPath: 'qr-raw.png',
+          filters: [{ name: 'PNG', extensions: ['png'] }]
+        })
+        if (!canceled && filePath) {
+          await window.api.writeBinaryFile(filePath, arrayBuffer)
+        }
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'qr-raw.png'
+        a.click()
+        URL.revokeObjectURL(url)
+      }
     }
   }
 
@@ -504,6 +515,24 @@ export function EditorPage({
                 <div className="editor-document__card-header">
                   <MoveHorizontal size={18} className="editor-document__card-icon" />
                   Positionnement & Taille
+                </div>
+
+                <div className="editor-document__presets">
+                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(20 + templateOptions.size / 2), y: Math.round(20 + templateOptions.size / 2) })}>
+                    Haut Gauche
+                  </button>
+                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(600 - 20 - templateOptions.size / 2), y: Math.round(20 + templateOptions.size / 2) })}>
+                    Haut Droit
+                  </button>
+                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: 300, y: 425 })}>
+                    Milieu
+                  </button>
+                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(20 + templateOptions.size / 2), y: Math.round(850 - 20 - templateOptions.size / 2) })}>
+                    Bas Gauche
+                  </button>
+                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(600 - 20 - templateOptions.size / 2), y: Math.round(850 - 20 - templateOptions.size / 2) })}>
+                    Bas Droit
+                  </button>
                 </div>
                 
                 <div className="editor-document__slider-row">

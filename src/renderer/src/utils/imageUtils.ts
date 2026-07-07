@@ -26,7 +26,7 @@ export async function addQrToImage(
 
       const qrImg = new Image()
       qrImg.onload = () => {
-        ctx.drawImage(qrImg, options.x, options.y, options.size, options.size)
+        ctx.drawImage(qrImg, options.x - options.size / 2, options.y - options.size / 2, options.size, options.size)
         canvas.toBlob((blob) => {
           if (!blob) {
             URL.revokeObjectURL(bgUrl)
