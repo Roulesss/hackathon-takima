@@ -21,34 +21,39 @@
 ## 4. Types & Utilities
 - [ ] Type definitions (qr.ts, project.ts, export.ts)
 - [ ] qrGenerator.ts (qr-code-styling wrapper)
-- [ ] contrastChecker.ts (chroma-js)
-- [ ] qrScanner.ts (jsqr wrapper)
-- [ ] pdfUtils.ts (pdf-lib)
+- [x] Type definitions (qr.ts, project.ts, export.ts)
+- [x] qrGenerator.ts (qr-code-styling wrapper)
+- [x] contrastChecker.ts (chroma-js)
+- [x] qrScanner.ts (jsqr wrapper)
+- [x] pdfUtils.ts (pdf-lib)
 
 ## 5. Hooks
-- [ ] useQrConfig.ts
-- [ ] useProjects.ts
-- [ ] useExport.ts
+- [x] useQrConfig.ts
+- [x] **Wiring the settings:** The "Settings" button in `HomePage.tsx` and `EditorPage.tsx` is wired up.
+- [x] **Persistence/Save:** The "Save" button in `EditorPage.tsx` saves JSON configuration via IPC.
+- [x] **IPC Handlers:** Handlers are implemented and wired into the API.
+- [x] **Project Loading:** The `HomePage` project loading supports opening from a JSON file.
+- [x] **Testing the full flow:** Verify that all navigation, state persistence, and file exports work correctly.uns
 
 ## 6. Pages
-- [ ] HomePage.tsx
-- [ ] ActivityChoicePage.tsx
-- [ ] EditorPage.tsx (QR config + preview)
-- [ ] ScannerPage.tsx
-- [ ] ExportPage.tsx
+- [x] HomePage.tsx
+- [x] ActivityChoicePage.tsx
+- [x] EditorPage.tsx (QR config + preview)
+- [x] ScannerPage.tsx
+- [x] ExportPage.tsx
 
 ## 7. Electron IPC
-- [ ] fileHandlers.ts
-- [ ] exportHandlers.ts
-- [ ] Preload script API
+- [x] fileHandlers.ts
+- [x] exportHandlers.ts
+- [x] Preload script API
 
 ## 8. App Assembly
-- [ ] App.tsx (routing + state)
-- [ ] Wire all pages together
-- [ ] Test full flow
+- [x] App.tsx (routing + state)
+- [x] Wire all pages together
+- [x] Test full flow
 
 ## 9. Verification
-- [ ] Build passes
-- [ ] Dev mode runs
-- [ ] QR generation works
-- [ ] Export works
+- [x] Build passes
+- [x] Dev mode runs
+- [x] QR generation works
+- [x] Export works

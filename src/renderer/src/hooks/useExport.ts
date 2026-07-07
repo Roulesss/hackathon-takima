@@ -22,19 +22,37 @@ export function useExport() {
       setExporting(true)
       setError(null)
       try {
+        let blob: Blob | null = null
+        let defaultFilename = ''
+
         if (format === 'svg') {
-          const blob = await exportQrAsBlob(config, 'svg')
-          if (blob) downloadBlob(blob, filename || 'qr-code.svg')
+          blob = await exportQrAsBlob(config, 'svg')
+          defaultFilename = filename || 'qr-code.svg'
         } else if (format === 'png') {
-          const blob = await exportQrAsBlob(config, 'png')
-          if (blob) downloadBlob(blob, filename || 'qr-code.png')
+          blob = await exportQrAsBlob(config, 'png')
+          defaultFilename = filename || 'qr-code.png'
         } else if (format === 'pdf') {
           const pngBlob = await exportQrAsBlob(config, 'png')
           if (pngBlob) {
             const arrayBuffer = await pngBlob.arrayBuffer()
             const pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' })
-            downloadBlob(pdfBlob, filename || 'qr-code.pdf')
+            blob = new Blob([pdfBytes], { type: 'application/pdf' })
+            defaultFilename = filename || 'qr-code.pdf'
+          }
+        }
+
+        if (blob) {
+          if (window.api && window.api.saveFileDialog) {
+            const arrayBuffer = await blob.arrayBuffer()
+            const { canceled, filePath } = await window.api.saveFileDialog({
+              defaultPath: defaultFilename,
+              filters: [{ name: format.toUpperCase(), extensions: [format] }]
+            })
+            if (!canceled && filePath) {
+              await window.api.writeBinaryFile(filePath, arrayBuffer)
+            }
+          } else {
+            downloadBlob(blob, defaultFilename)
           }
         }
       } catch (err) {

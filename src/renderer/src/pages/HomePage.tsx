@@ -42,7 +42,7 @@ export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProp
           <p className="home__subtitle">Créez, personnalisez et exportez vos QR codes</p>
         </div>
 
-        <div className="home__actions">
+        <div className="home__actions" style={{ display: 'flex', gap: 'var(--space-4)' }}>
           <Button
             variant="primary"
             size="lg"
@@ -50,6 +50,52 @@ export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProp
             onClick={() => onNavigate('activity-choice')}
           >
             Créer un nouveau projet
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={async () => {
+              try {
+                if (window.api && window.api.openFileDialog) {
+                  const { canceled, filePaths } = await window.api.openFileDialog({
+                    filters: [{ name: 'JSON', extensions: ['json'] }],
+                    properties: ['openFile']
+                  })
+                  if (!canceled && filePaths.length > 0) {
+                    const result = await window.api.readFile(filePaths[0])
+                    if (result.success && result.data) {
+                      const config = JSON.parse(result.data)
+                      onNavigate('editor', { config, activity: 'qr-code' })
+                    }
+                  }
+                } else {
+                  // Fallback web
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = '.json'
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = (ev) => {
+                        try {
+                          const config = JSON.parse(ev.target?.result as string)
+                          onNavigate('editor', { config, activity: 'qr-code' })
+                        } catch (err) {
+                          console.error(err)
+                        }
+                      }
+                      reader.readAsText(file)
+                    }
+                  }
+                  input.click()
+                }
+              } catch (err) {
+                console.error(err)
+              }
+            }}
+          >
+            Ouvrir un projet...
           </Button>
         </div>
 

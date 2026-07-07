@@ -299,7 +299,34 @@ export function EditorPage({
         }
         right={
           <div style={{ display: 'flex', gap: '4px' }}>
-            <IconButton icon={Save} tooltip="Sauvegarder" onClick={() => {}} />
+            <IconButton
+              icon={Save}
+              tooltip="Sauvegarder"
+              onClick={async () => {
+                try {
+                  const dataToSave = JSON.stringify(qrConfig, null, 2)
+                  if (window.api && window.api.saveFileDialog) {
+                    const { canceled, filePath } = await window.api.saveFileDialog({
+                      defaultPath: 'projet-qr.json',
+                      filters: [{ name: 'JSON', extensions: ['json'] }]
+                    })
+                    if (!canceled && filePath) {
+                      await window.api.writeFile(filePath, dataToSave)
+                    }
+                  } else {
+                    const blob = new Blob([dataToSave], { type: 'application/json' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'projet-qr.json'
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  }
+                } catch (err) {
+                  console.error('Failed to save project:', err)
+                }
+              }}
+            />
             <IconButton icon={Settings} tooltip="Paramètres" onClick={() => setSettingsOpen(true)} />
           </div>
         }

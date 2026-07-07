@@ -18,6 +18,14 @@ function App(): JSX.Element {
     if (data?.activity) {
       setCurrentActivity(data.activity as ActivityType)
     }
+    if (data?.config) {
+      setQrConfig(data.config as any)
+    } else if (data?.projectId) {
+      const project = projects.find(p => p.id === data.projectId)
+      if (project) {
+        setQrConfig(project.config)
+      }
+    }
   }
 
   const renderPage = (): JSX.Element => {
