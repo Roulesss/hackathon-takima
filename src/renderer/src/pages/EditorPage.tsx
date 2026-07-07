@@ -90,6 +90,7 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   }
   const [lastModifiedIndex, setLastModifiedIndex] = useState<number>(0)
   const [templateDimensions, setTemplateDimensions] = useState<{width: number, height: number}>({ width: 600, height: 850 })
+  const [previewIndex, setPreviewIndex] = useState(0)
   const qrRef = useRef<HTMLDivElement>(null)
 
   const handleTabChange = (tabId: string) => {
@@ -160,10 +161,11 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const renderQr = useCallback(() => {
     if (!qrRef.current) return
     qrRef.current.innerHTML = ''
-    const previewUrl = batchUrls.length > 0 ? batchUrls[0] : qrConfig.url
+    const urls = batchUrls.length > 0 ? batchUrls : [qrConfig.url]
+    const previewUrl = urls[previewIndex] || urls[0]
     const qr = createQrInstance({ ...qrConfig, url: previewUrl })
     qr.append(qrRef.current)
-  }, [qrConfig, batchUrls])
+  }, [qrConfig, batchUrls, previewIndex])
 
   useEffect(() => {
     renderQr()
@@ -329,7 +331,7 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         <BusinessCardPreview 
           config={bcConfig} 
           qrConfig={qrConfig} 
-          previewUrl={batchUrls.length > 0 ? batchUrls[0] : qrConfig.url} 
+          previewUrl={(batchUrls.length > 0 ? batchUrls : [qrConfig.url])[previewIndex] || (batchUrls.length > 0 ? batchUrls[0] : qrConfig.url)} 
         />
       ) : activeTab === 'document' && pdfPreviewUrl ? (
         <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
@@ -340,6 +342,14 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
       ) : (
         <div className="editor-preview__qr-container">
           <div ref={qrRef} className="editor-preview__qr" />
+        </div>
+      )}
+      
+      {batchUrls.length > 1 && activeTab !== 'document' && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '16px', background: 'var(--background-secondary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <Button disabled={previewIndex === 0} onClick={() => setPreviewIndex(p => Math.max(0, p - 1))} variant="secondary" style={{ padding: '8px' }}>Précédent</Button>
+          <span style={{ fontSize: '14px', fontWeight: 600 }}>{previewIndex + 1} / {batchUrls.length}</span>
+          <Button disabled={previewIndex === batchUrls.length - 1} onClick={() => setPreviewIndex(p => Math.min(batchUrls.length - 1, p + 1))} variant="secondary" style={{ padding: '8px' }}>Suivant</Button>
         </div>
       )}
 

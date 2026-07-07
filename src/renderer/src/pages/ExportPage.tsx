@@ -7,6 +7,7 @@ import { useExport } from '@renderer/hooks'
 import type { QrConfig, ExportFormat, BusinessCardConfig, ActivityType } from '@renderer/types'
 import { BusinessCardPreview } from '@renderer/components/business-card/BusinessCardPreview'
 import * as htmlToImage from 'html-to-image'
+import JSZip from 'jszip'
 import { createQrInstance, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
 import './ExportPage.css'
 
@@ -35,6 +36,11 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('png')
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
   const [bcResolution, setBcResolution] = useState<number>(2)
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const [localExporting, setLocalExporting] = useState(false)
+  
+  const validUrls = qrConfig.batchUrls && qrConfig.batchUrls.length > 0 ? qrConfig.batchUrls.filter(u => u.trim() !== '') : [qrConfig.url]
+  const urls = validUrls.length > 0 ? validUrls : [qrConfig.url]
   const { exportQr, exporting, error } = useExport()
     if (activityType === 'document' && templateMimeType) {
       if (templateMimeType === 'application/pdf' && selectedFormat !== 'pdf') setSelectedFormat('pdf')
@@ -48,9 +54,10 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
   const renderQr = useCallback(() => {
     if (!qrRef.current) return
     qrRef.current.innerHTML = ''
-    const qr = createQrInstance(qrConfig)
+    const currentUrl = urls[previewIndex] || urls[0]
+    const qr = createQrInstance({ ...qrConfig, url: currentUrl, size: Math.min(qrConfig.size, 300) })
     qr.append(qrRef.current)
-  }, [qrConfig])
+  }, [qrConfig, urls, previewIndex])
 
   useEffect(() => {
     renderQr()
@@ -151,17 +158,55 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
 
   const handleExport = async (): Promise<void> => {
     if (activityType === 'business-card' && bcRef.current && businessCardConfig) {
+      setLocalExporting(true)
       try {
-        const dataUrl = await htmlToImage.toPng(bcRef.current, {
-          quality: 1,
-          pixelRatio: bcResolution,
-        })
-        const a = document.createElement('a')
-        a.href = dataUrl
-        a.download = `carte-de-visite-${businessCardConfig.name.replace(/\s+/g, '-').toLowerCase()}.png`
-        a.click()
+        if (urls.length > 1) {
+          const zip = new JSZip()
+          for (let i = 0; i < urls.length; i++) {
+            setPreviewIndex(i)
+            await new Promise(r => setTimeout(r, 150)) // Wait for DOM to render the new QR code
+            const dataUrl = await htmlToImage.toPng(bcRef.current, { quality: 1, pixelRatio: bcResolution })
+            const base64Data = dataUrl.split(',')[1]
+            const binaryString = atob(base64Data)
+            const bytes = new Uint8Array(binaryString.length)
+            for (let j = 0; j < binaryString.length; j++) {
+              bytes[j] = binaryString.charCodeAt(j)
+            }
+            const arrayBuffer = bytes.buffer
+            const naming = batchNaming || 'carte_{index}'
+            zip.file(`${naming.replace('{index}', String(i + 1))}.png`, arrayBuffer)
+          }
+          const zipBlob = await zip.generateAsync({ type: 'blob' })
+          if (window.api && window.api.saveFileDialog) {
+            const arrayBuffer = await zipBlob.arrayBuffer()
+            const { canceled, filePath } = await window.api.saveFileDialog({
+              defaultPath: 'cartes-de-visite.zip',
+              filters: [{ name: 'ZIP', extensions: ['zip'] }]
+            })
+            if (!canceled && filePath) {
+              await window.api.writeBinaryFile(filePath, arrayBuffer)
+            }
+          } else {
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(zipBlob)
+            a.download = 'cartes-de-visite.zip'
+            a.click()
+            URL.revokeObjectURL(a.href)
+          }
+        } else {
+          const dataUrl = await htmlToImage.toPng(bcRef.current, {
+            quality: 1,
+            pixelRatio: bcResolution,
+          })
+          const a = document.createElement('a')
+          a.href = dataUrl
+          a.download = `carte-de-visite-${businessCardConfig.name.replace(/\s+/g, '-').toLowerCase()}.png`
+          a.click()
+        }
       } catch (err) {
         console.error('Failed to export business card', err)
+      } finally {
+        setLocalExporting(false)
       }
     } else if (activityType === 'document' && templateBytes && templateMimeType) {
       exportQr(qrConfig, selectedFormat, undefined, {
@@ -184,7 +229,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
           <BusinessCardPreview 
             config={businessCardConfig} 
             qrConfig={qrConfig} 
-            previewUrl={qrConfig.url} 
+            previewUrl={urls[previewIndex] || qrConfig.url} 
             ref={bcRef}
           />
         </div>
@@ -197,6 +242,14 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
       ) : (
         <div className="export-preview__qr-container">
           <div ref={qrRef} className="export-preview__qr" />
+        </div>
+      )}
+      
+      {urls.length > 1 && (!templateBytes || !pdfPreviewUrl) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '16px', background: 'var(--background-secondary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <Button disabled={previewIndex === 0 || localExporting} onClick={() => setPreviewIndex(p => Math.max(0, p - 1))} variant="secondary" style={{ padding: '8px' }}>Précédent</Button>
+          <span style={{ fontSize: '14px', fontWeight: 600 }}>{previewIndex + 1} / {urls.length}</span>
+          <Button disabled={previewIndex === urls.length - 1 || localExporting} onClick={() => setPreviewIndex(p => Math.min(urls.length - 1, p + 1))} variant="secondary" style={{ padding: '8px' }}>Suivant</Button>
         </div>
       )}
       
@@ -303,7 +356,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
 
       <div className="export-config__divider" />
 
-      {activityType === 'qr-code' && (
+      {(activityType === 'qr-code' || activityType === 'business-card') && urls.length > 1 && (
         <div className="export-config__batch">
           <h3 className="export-config__batch-title">Options batch</h3>
           <div className="export-config__batch-field">
@@ -341,10 +394,10 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
           size="lg"
           icon={Download}
           onClick={handleExport}
-          disabled={exporting}
+          disabled={exporting || localExporting}
           style={{ flex: 2 }}
         >
-          {exporting ? 'Export en cours...' : activityType === 'business-card' ? 'Exporter (PNG)' : activityType === 'document' ? 'Exporter Document' : `Exporter en ${selectedFormat.toUpperCase()}`}
+          {exporting || localExporting ? 'Export en cours...' : activityType === 'business-card' ? (urls.length > 1 ? 'Exporter Batch (ZIP)' : 'Exporter (PNG)') : activityType === 'document' ? 'Exporter Document' : `Exporter en ${selectedFormat.toUpperCase()}`}
         </Button>
       </div>
     </div>
