@@ -9,16 +9,19 @@ interface BusinessCardPreviewProps {
   config: BusinessCardConfig
   qrConfig: QrConfig
   previewUrl: string
+  disableScaling?: boolean
 }
 
 export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCardPreviewProps>(
-  ({ config, qrConfig, previewUrl }, ref) => {
+  ({ config, qrConfig, previewUrl, disableScaling }, ref) => {
     const qrRef = useRef<HTMLDivElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const [scale, setScale] = useState(1)
 
     // Handle scaling so the 850x550 card fits in the container
     useEffect(() => {
+      if (disableScaling) return
+      
       const observer = new ResizeObserver((entries) => {
         if (!entries[0]) return
         const { width, height } = entries[0].contentRect
@@ -65,7 +68,11 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
     }
 
     return (
-      <div className="business-card-container" ref={containerRef}>
+      <div 
+        className="business-card-container" 
+        ref={containerRef}
+        style={disableScaling ? { background: 'transparent', padding: 0 } : {}}
+      >
         <div className="business-card" style={cardStyle} ref={ref}>
           <div className="business-card__content">
             <div className="business-card__info">

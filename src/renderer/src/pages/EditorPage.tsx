@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon, Leaf } from 'lucide-react'
+import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon, Leaf, Cuboid, Layers } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
 import { createQrInstance, checkContrast, exportQrAsBlob, exportQrAsDataUrl, addQrToPdf, addQrToImage } from '@renderer/utils'
 import { useBusinessCardConfig } from '@renderer/hooks'
 import { BusinessCardPreview } from '@renderer/components/business-card/BusinessCardPreview'
+import { BusinessCard3DPreview } from '@renderer/components/business-card/BusinessCard3DPreview'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
 
 import './EditorPage.css'
@@ -73,6 +74,7 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const [isDragging, setIsDragging] = useState(false)
   const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+  const [is3DMode, setIs3DMode] = useState(false)
   const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
   const { config: bcConfigLocal, setConfig: setBcConfigLocal } = useBusinessCardConfig()
   const bcConfig = props.businessCardConfig || bcConfigLocal
@@ -388,11 +390,22 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const previewPanel = (
     <div className="editor-preview">
       {activeTab === 'business-card' ? (
-        <BusinessCardPreview 
-          config={bcConfig} 
-          qrConfig={qrConfig} 
-          previewUrl={(batchUrls.length > 0 ? batchUrls : [qrConfig.url])[previewIndex] || (batchUrls.length > 0 ? batchUrls[0] : qrConfig.url)} 
-        />
+        <>
+
+          {is3DMode ? (
+            <BusinessCard3DPreview 
+              config={bcConfig} 
+              qrConfig={qrConfig} 
+              previewUrl={(batchUrls.length > 0 ? batchUrls : [qrConfig.url])[previewIndex] || (batchUrls.length > 0 ? batchUrls[0] : qrConfig.url)} 
+            />
+          ) : (
+            <BusinessCardPreview 
+              config={bcConfig} 
+              qrConfig={qrConfig} 
+              previewUrl={(batchUrls.length > 0 ? batchUrls : [qrConfig.url])[previewIndex] || (batchUrls.length > 0 ? batchUrls[0] : qrConfig.url)} 
+            />
+          )}
+        </>
       ) : activeTab === 'document' && pdfPreviewUrl ? (
         <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
           <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="PDF Preview">
@@ -428,7 +441,37 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         </div>
       )}
 
-      <div className="editor-preview__actions">
+      <div className="editor-preview__actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        {activeTab === 'business-card' ? (
+          <div style={{ display: 'flex', background: '#e5e7eb', borderRadius: '8px', padding: '4px' }}>
+            <button
+              onClick={() => setIs3DMode(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: 'none',
+                borderRadius: '6px', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                background: !is3DMode ? '#ffffff' : 'transparent',
+                color: !is3DMode ? '#3b82f6' : '#6b7280',
+                boxShadow: !is3DMode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Layers size={14} /> 2D
+            </button>
+            <button
+              onClick={() => setIs3DMode(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: 'none',
+                borderRadius: '6px', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                background: is3DMode ? '#ffffff' : 'transparent',
+                color: is3DMode ? '#3b82f6' : '#6b7280',
+                boxShadow: is3DMode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Cuboid size={14} /> 3D
+            </button>
+          </div>
+        ) : <div />}
         <Button variant="ghost" size="sm" onClick={handleRawExport}>
           Raw Export
         </Button>
