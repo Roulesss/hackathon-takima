@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon, Leaf } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
@@ -325,6 +325,66 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     })
   }
 
+  const handleEcoPrintPreset = () => {
+    onConfigChange({
+      ...qrConfig,
+      style: {
+        ...qrConfig.style,
+        dotStyle: 'dots',
+        cornerStyle: 'dot',
+        cornerDotStyle: 'dot',
+        colors: {
+          ...qrConfig.style.colors,
+          foreground: '#333333',
+          background: '#ffffff',
+          cornerSquareColor: '#333333',
+          cornerDotColor: '#333333'
+        }
+      },
+      logo: undefined
+    })
+    setUseCustomCornerColor(false)
+    setUseCustomCornerDotColor(false)
+  }
+
+  const handleBcEcoPrintPreset = () => {
+    setBcConfig({
+      ...bcConfig,
+      backgroundType: 'solid',
+      backgroundColor: '#ffffff',
+      textColor: '#333333',
+      accentColor: '#555555',
+      nameFontFamily: 'Raleway',
+      descFontFamily: 'Courier Prime',
+      nameFontSize: 52,
+      descFontSize: 28,
+      showBorder: false,
+      borderWidth: 1,
+      borderColor: '#000000',
+      iconStyle: 'circle'
+    })
+    
+    onConfigChange({
+      ...qrConfig,
+      style: {
+        ...qrConfig.style,
+        dotStyle: 'dots',
+        cornerStyle: 'dot',
+        cornerDotStyle: 'dot',
+        colors: {
+          ...qrConfig.style.colors,
+          foreground: '#333333',
+          background: '#ffffff',
+          cornerSquareColor: '#333333',
+          cornerDotColor: '#333333'
+        }
+      },
+      logo: undefined
+    })
+    setUseCustomCornerColor(false)
+    setUseCustomCornerDotColor(false)
+  }
+
   const previewPanel = (
     <div className="editor-preview">
       {activeTab === 'business-card' ? (
@@ -450,6 +510,26 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="editor-config__section" style={{ padding: '16px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#166534', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Leaf size={16} /> Mode Eco Print
+                </h3>
+                <p style={{ margin: '4px 0 0 0', color: '#15803d', fontSize: '12px' }}>
+                  Optimise le QR code pour consommer un minimum d'encre à l'impression.
+                </p>
+              </div>
+              <Button 
+                onClick={handleEcoPrintPreset}
+                style={{ backgroundColor: '#22c55e', color: 'white', border: 'none' }}
+                icon={Leaf}
+              >
+                Appliquer
+              </Button>
+            </div>
           </div>
 
           <div className="editor-config__section">
@@ -593,6 +673,26 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         </>
       ) : activeTab === 'business-card' ? (
         <>
+          <div className="editor-config__section" style={{ padding: '16px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#166534', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Leaf size={16} /> Mode Eco Print
+                </h3>
+                <p style={{ margin: '4px 0 0 0', color: '#15803d', fontSize: '12px' }}>
+                  Optimise la carte pour consommer un minimum d'encre (texte fin, fond blanc, pas de bordures).
+                </p>
+              </div>
+              <Button 
+                onClick={handleBcEcoPrintPreset}
+                style={{ backgroundColor: '#22c55e', color: 'white', border: 'none' }}
+                icon={Leaf}
+              >
+                Appliquer
+              </Button>
+            </div>
+          </div>
+
           <div className="editor-config__section">
             <label className="editor-config__label">Taille du QR Code (Miniature)</label>
             <input
@@ -689,6 +789,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
             )}
           </div>
 
+
+
           <div className="editor-config__section">
             <label className="editor-config__label">Type d'arrière-plan</label>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -744,6 +846,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
             )}
           </div>
 
+
+
           <div className="editor-config__section">
             <label className="editor-config__label">Couleurs du texte</label>
             <div className="editor-config__color-group">
@@ -788,6 +892,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                     <option value="Montserrat">Montserrat</option>
                     <option value="Arial">Arial</option>
                     <option value="Times New Roman">Times</option>
+                    <option value="Courier Prime">Courier Prime (Eco)</option>
+                    <option value="Raleway">Raleway (Eco)</option>
                   </select>
                 </div>
                 <div>
@@ -817,6 +923,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                     <option value="Montserrat">Montserrat</option>
                     <option value="Arial">Arial</option>
                     <option value="Times New Roman">Times</option>
+                    <option value="Courier Prime">Courier Prime (Eco)</option>
+                    <option value="Raleway">Raleway (Eco)</option>
                   </select>
                 </div>
                 <div>
