@@ -30,7 +30,7 @@ function App(): React.JSX.Element {
       if (project) {
         setQrConfig(project.qrConfig)
       }
-    } else if (page === 'editor' && currentPage !== 'editor' && !data?.config && !data?.projectId) {
+    } else if (page === 'editor' && currentPage === 'activity-choice' && !data?.config && !data?.projectId) {
       resetConfig()
     }
   }
