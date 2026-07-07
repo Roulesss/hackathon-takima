@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { BusinessCardConfig } from '@renderer/types'
 import { QrConfig } from '@renderer/types/qr'
 import { createQrInstance } from '@renderer/utils'
+import { MapPin, Phone, Briefcase, Building } from 'lucide-react'
 import './BusinessCardPreview.css'
 
 interface BusinessCardPreviewProps {
@@ -41,7 +42,7 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
       const cardQrConfig = {
         ...qrConfig,
         url: previewUrl,
-        size: 150, // Fixed size for the business card layout
+        size: 130, // Slightly smaller to prevent overflow in the 150px wrapper padding
         margin: 0
       }
       const qr = createQrInstance(cardQrConfig)
@@ -49,12 +50,14 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
     }, [qrConfig, previewUrl])
 
     const cardStyle: React.CSSProperties = {
-      backgroundColor: config.backgroundColor,
-      backgroundImage: config.backgroundImageUrl ? `url(${config.backgroundImageUrl})` : undefined,
+      background: config.backgroundType === 'gradient' 
+        ? `linear-gradient(135deg, ${config.gradientStart || '#ffffff'} 0%, ${config.gradientEnd || '#f3f4f6'} 100%)`
+        : config.backgroundType === 'image' && config.backgroundImageUrl
+          ? `url(${config.backgroundImageUrl})`
+          : config.backgroundColor,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       color: config.textColor,
-      fontFamily: config.fontFamily,
       border: config.showBorder ? `${config.borderWidth}px solid ${config.borderColor}` : 'none',
       borderRadius: `${config.borderRadius}px`,
       transform: `scale(${scale})`,
@@ -64,22 +67,34 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
     return (
       <div className="business-card-container" ref={containerRef}>
         <div className="business-card" style={cardStyle} ref={ref}>
-          <div className="business-card__content" style={{ transform: `scale(${config.fontSizeScale})`, transformOrigin: 'top left' }}>
+          <div className="business-card__content">
             <div className="business-card__info">
               {config.iconUrl && (
-                <img src={config.iconUrl} alt="Icon/Logo" className="business-card__icon" />
+                <img 
+                  src={config.iconUrl} 
+                  alt="Icon/Logo" 
+                  className="business-card__icon" 
+                  style={{ width: `${config.iconSize}px`, height: `${config.iconSize}px` }} 
+                />
               )}
-              <h1 className="business-card__name" style={{ color: config.accentColor }}>
+              <h1 className="business-card__name" style={{ color: config.accentColor, fontFamily: config.nameFontFamily || 'Inter', fontSize: `${config.nameFontSize || 42}px` }}>
                 {config.name}
               </h1>
-              <p className="business-card__profession">{config.professionOrDomain}</p>
+              <p className="business-card__profession" style={{ fontFamily: config.descFontFamily || 'Inter', fontSize: `${config.descFontSize || 24}px` }}>
+                {config.type === 'company' ? <Building size={Math.max(16, (config.descFontSize || 24) * 0.8)} /> : <Briefcase size={Math.max(16, (config.descFontSize || 24) * 0.8)} />}
+                {config.professionOrDomain}
+              </p>
               
-              <div className="business-card__details">
+              <div className="business-card__details" style={{ fontFamily: config.descFontFamily || 'Inter' }}>
                 {config.location && (
-                  <p className="business-card__detail-item">📍 {config.location}</p>
+                  <p className="business-card__detail-item" style={{ fontSize: `${Math.max(12, (config.descFontSize || 24) * 0.75)}px` }}>
+                    <MapPin size={Math.max(14, (config.descFontSize || 24) * 0.7)} /> {config.location}
+                  </p>
                 )}
                 {config.phone && (
-                  <p className="business-card__detail-item">📞 {config.phone}</p>
+                  <p className="business-card__detail-item" style={{ fontSize: `${Math.max(12, (config.descFontSize || 24) * 0.75)}px` }}>
+                    <Phone size={Math.max(14, (config.descFontSize || 24) * 0.7)} /> {config.phone}
+                  </p>
                 )}
               </div>
             </div>

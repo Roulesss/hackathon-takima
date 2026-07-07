@@ -9,12 +9,17 @@ export interface BusinessCardConfig {
   phone: string
   
   // Design details
+  backgroundType: 'solid' | 'gradient' | 'image'
   backgroundColor: string
+  gradientStart?: string
+  gradientEnd?: string
   backgroundImageUrl?: string
   textColor: string
   accentColor: string
-  fontFamily: string
-  fontSizeScale: number
+  nameFontFamily: string
+  descFontFamily: string
+  nameFontSize: number
+  descFontSize: number
   showBorder: boolean
   borderColor: string
   borderWidth: number
@@ -22,6 +27,7 @@ export interface BusinessCardConfig {
   
   // Icon/Logo
   iconUrl?: string
+  iconSize: number
 }
 
 export const DEFAULT_BUSINESS_CARD_CONFIG: BusinessCardConfig = {
@@ -30,13 +36,19 @@ export const DEFAULT_BUSINESS_CARD_CONFIG: BusinessCardConfig = {
   professionOrDomain: 'Développeur Web',
   location: 'Paris, France',
   phone: '+33 6 12 34 56 78',
+  backgroundType: 'solid',
   backgroundColor: '#ffffff',
+  gradientStart: '#ffffff',
+  gradientEnd: '#f3f4f6',
   textColor: '#1a1a1a',
   accentColor: '#3b82f6',
-  fontFamily: 'Inter',
-  fontSizeScale: 1,
+  nameFontFamily: 'Inter',
+  descFontFamily: 'Inter',
+  nameFontSize: 42,
+  descFontSize: 24,
   showBorder: true,
   borderColor: '#e5e7eb',
   borderWidth: 1,
-  borderRadius: 12
+  borderRadius: 12,
+  iconSize: 80
 }

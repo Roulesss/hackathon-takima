@@ -57,6 +57,9 @@
   font-weight: 400;
   opacity: 0.8;
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .business-card__details {
@@ -84,6 +87,8 @@
   padding: 10px;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .business-card__qr {

@@ -140,6 +140,32 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     }
   }, [activeTab, templateBytes, templateMimeType, debouncedTemplateOptions, qrConfig, batchUrls])
 
+  const handleImportImage = async (field: 'iconUrl' | 'backgroundImageUrl') => {
+    if (window.api && window.api.openFileDialog) {
+      const result = await window.api.openFileDialog({
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg'] }],
+        properties: ['openFile']
+      })
+      if (!result.canceled && result.filePaths.length > 0) {
+        const filePath = result.filePaths[0]
+        const readResult = await window.api.readBinaryFile(filePath)
+        if (readResult.success && readResult.data) {
+          const ext = filePath.split('.').pop()?.toLowerCase() || 'png'
+          const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
+          
+          // Convert arraybuffer to base64
+          const bytes = new Uint8Array(readResult.data)
+          let binary = ''
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i])
+          }
+          const base64 = btoa(binary)
+          setBcConfig({ ...bcConfig, [field]: `data:${mime};base64,${base64}` })
+        }
+      }
+    }
+  }
+
   const handleImportDocument = async () => {
     if (window.api && window.api.openFileDialog) {
       const result = await window.api.openFileDialog({
@@ -523,10 +549,53 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
           <div className="editor-config__divider" />
 
           <div className="editor-config__section">
-            <label className="editor-config__label">Couleurs de la carte</label>
-            <div className="editor-config__color-group">
-              <div className="editor-config__color-row">
-                <span className="editor-config__color-label">Arrière-plan</span>
+            <label className="editor-config__label">Logo / Photo de profil</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <Button onClick={() => handleImportImage('iconUrl')} variant="secondary" fullWidth>
+                {bcConfig.iconUrl ? 'Changer l\'image' : 'Importer une image'}
+              </Button>
+              {bcConfig.iconUrl && (
+                <Button onClick={() => setBcConfig({ ...bcConfig, iconUrl: undefined })} variant="secondary" style={{ padding: '0.5rem', minWidth: '40px' }}>
+                  🗑️
+                </Button>
+              )}
+            </div>
+            {bcConfig.iconUrl && (
+              <div style={{ marginTop: '8px' }}>
+                <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Taille de l'image ({bcConfig.iconSize || 80}px)</span>
+                <input
+                  type="range"
+                  className="editor-config__slider"
+                  min={40} max={200} step={5}
+                  value={bcConfig.iconSize || 80}
+                  onChange={(e) => setBcConfig({ ...bcConfig, iconSize: Number(e.target.value) })}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Type d'arrière-plan</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <Button
+                variant={bcConfig.backgroundType === 'solid' ? 'primary' : 'secondary'}
+                onClick={() => setBcConfig({ ...bcConfig, backgroundType: 'solid' })}
+                style={{ flex: 1, padding: '4px' }}
+              >
+                Couleur
+              </Button>
+              <Button
+                variant={bcConfig.backgroundType === 'gradient' ? 'primary' : 'secondary'}
+                onClick={() => setBcConfig({ ...bcConfig, backgroundType: 'gradient' })}
+                style={{ flex: 1, padding: '4px' }}
+              >
+                Dégradé
+              </Button>
+            </div>
+            
+            {bcConfig.backgroundType === 'solid' && (
+              <div className="editor-config__color-row" style={{ marginBottom: '12px' }}>
+                <span className="editor-config__color-label">Couleur de fond</span>
                 <input
                   type="color"
                   className="editor-config__color-input"
@@ -534,6 +603,35 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                   onChange={(e) => setBcConfig({ ...bcConfig, backgroundColor: e.target.value })}
                 />
               </div>
+            )}
+            
+            {bcConfig.backgroundType === 'gradient' && (
+              <div className="editor-config__color-group" style={{ marginBottom: '12px' }}>
+                <div className="editor-config__color-row">
+                  <span className="editor-config__color-label">Début du dégradé</span>
+                  <input
+                    type="color"
+                    className="editor-config__color-input"
+                    value={bcConfig.gradientStart || '#ffffff'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, gradientStart: e.target.value })}
+                  />
+                </div>
+                <div className="editor-config__color-row">
+                  <span className="editor-config__color-label">Fin du dégradé</span>
+                  <input
+                    type="color"
+                    className="editor-config__color-input"
+                    value={bcConfig.gradientEnd || '#f3f4f6'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, gradientEnd: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Couleurs du texte</label>
+            <div className="editor-config__color-group">
               <div className="editor-config__color-row">
                 <span className="editor-config__color-label">Texte</span>
                 <input
@@ -558,18 +656,73 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
           <div className="editor-config__divider" />
 
           <div className="editor-config__section">
-            <label className="editor-config__label">Style</label>
+            <label className="editor-config__label">Style du texte</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <span style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Police (Google Fonts / Native)</span>
-                <input
-                  type="text"
-                  className="editor-config__input"
-                  value={bcConfig.fontFamily}
-                  onChange={(e) => setBcConfig({ ...bcConfig, fontFamily: e.target.value })}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Police du nom</span>
+                  <select
+                    className="editor-config__input"
+                    value={bcConfig.nameFontFamily || 'Inter'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, nameFontFamily: e.target.value })}
+                    style={{ padding: '8px' }}
+                  >
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times</option>
+                  </select>
+                </div>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Taille du nom ({bcConfig.nameFontSize || 42}px)</span>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min={20} max={80} step={1}
+                    value={bcConfig.nameFontSize || 42}
+                    onChange={(e) => setBcConfig({ ...bcConfig, nameFontSize: Number(e.target.value) })}
+                  />
+                </div>
               </div>
-              
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Police description</span>
+                  <select
+                    className="editor-config__input"
+                    value={bcConfig.descFontFamily || 'Inter'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, descFontFamily: e.target.value })}
+                    style={{ padding: '8px' }}
+                  >
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times</option>
+                  </select>
+                </div>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Taille desc ({bcConfig.descFontSize || 24}px)</span>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min={12} max={40} step={1}
+                    value={bcConfig.descFontSize || 24}
+                    onChange={(e) => setBcConfig({ ...bcConfig, descFontSize: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="editor-config__divider" />
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Bordure</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <label className="editor-config__checkbox-row">
                 <input
                   type="checkbox"
@@ -580,15 +733,27 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
               </label>
               
               {bcConfig.showBorder && (
-                <div className="editor-config__color-row">
-                  <span className="editor-config__color-label">Couleur de bordure</span>
-                  <input
-                    type="color"
-                    className="editor-config__color-input"
-                    value={bcConfig.borderColor}
-                    onChange={(e) => setBcConfig({ ...bcConfig, borderColor: e.target.value })}
-                  />
-                </div>
+                <>
+                  <div className="editor-config__color-row">
+                    <span className="editor-config__color-label">Couleur</span>
+                    <input
+                      type="color"
+                      className="editor-config__color-input"
+                      value={bcConfig.borderColor}
+                      onChange={(e) => setBcConfig({ ...bcConfig, borderColor: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Épaisseur ({bcConfig.borderWidth || 1}px)</span>
+                    <input
+                      type="range"
+                      className="editor-config__slider"
+                      min={1} max={20} step={1}
+                      value={bcConfig.borderWidth || 1}
+                      onChange={(e) => setBcConfig({ ...bcConfig, borderWidth: Number(e.target.value) })}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </div>
