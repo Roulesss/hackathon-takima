@@ -1,50 +1,38 @@
 .split-layout {
-  flex: 1;
-  overflow: hidden;
-}
-
-.split-layout__panel {
-  overflow: hidden;
-}
-
-.split-layout__content {
-  height: 100%;
-  overflow-y: auto;
-  padding: var(--space-5);
-}
-
-.split-layout__handle {
-  width: 8px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  transition: background var(--transition-normal);
-  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
-.split-layout__handle:hover {
-  background: var(--color-accent-light);
+.split-layout__left {
+  padding: var(--space-5);
+  overflow: hidden;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.split-layout__handle-bar {
-  width: 2px;
-  height: 40px;
-  border-radius: var(--radius-full);
-  background: var(--color-bg-active);
-  transition: all var(--transition-normal);
+.split-layout__divider {
+  flex: 0 0 4px;
+  cursor: col-resize;
+  background: var(--color-divider);
+  transition: background var(--transition-fast);
 }
 
-.split-layout__handle:hover .split-layout__handle-bar {
-  height: 60px;
+.split-layout__divider:hover,
+.split-layout__divider--dragging {
   background: var(--color-accent);
 }
 
-.split-layout__handle[data-resize-handle-active] {
-  background: var(--color-accent-light);
+.split-layout__right {
+  flex: 1;
+  padding: var(--space-5);
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.split-layout__handle[data-resize-handle-active] .split-layout__handle-bar {
-  height: 60px;
-  background: var(--color-accent);
+.split-layout--dragging {
+  user-select: none;
+  cursor: col-resize;
 }

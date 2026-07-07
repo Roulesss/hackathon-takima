@@ -1,13 +1,13 @@
 import { type ReactNode, type ButtonHTMLAttributes } from 'react'
-import type { LucideIcon } from 'lucide-react'
 import './Button.css'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
-  icon?: LucideIcon
+  icon?: React.ComponentType<{ size?: number }>
   fullWidth?: boolean
   children?: ReactNode
+  type?: 'button' | 'submit'
 }
 
 export function Button({
@@ -17,14 +17,22 @@ export function Button({
   fullWidth = false,
   children,
   className = '',
+  type = 'button',
   ...props
 }: ButtonProps): JSX.Element {
+  const iconSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16
+
   return (
     <button
       className={`btn btn--${variant} btn--${size} ${fullWidth ? 'btn--full' : ''} ${className}`}
+      type={type}
       {...props}
     >
-      {Icon && <Icon className="btn__icon" />}
+      {Icon && (
+        <span className="btn__icon">
+          <Icon size={iconSize} />
+        </span>
+      )}
       {children && <span className="btn__label">{children}</span>}
     </button>
   )

@@ -1,35 +1,62 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useState } from 'react'
+import { HomePage, ActivityChoicePage, EditorPage, ScannerPage, ExportPage } from './pages'
+import { useQrConfig } from './hooks'
+import { useProjects } from './hooks'
+import type { ActivityType, ProjectConfig } from './types'
+import './styles/global.css'
 
-function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+export type PageId = 'home' | 'activity-choice' | 'editor' | 'scanner' | 'export'
 
-  return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
-  )
+function App(): JSX.Element {
+  const [currentPage, setCurrentPage] = useState<PageId>('home')
+  const [currentActivity, setCurrentActivity] = useState<ActivityType>('qr-code')
+  const { config: qrConfig, setConfig: setQrConfig } = useQrConfig()
+  const { projects, addProject, deleteProject } = useProjects()
+
+  const navigate = (page: string, data?: Record<string, unknown>): void => {
+    setCurrentPage(page as PageId)
+    if (data?.activity) {
+      setCurrentActivity(data.activity as ActivityType)
+    }
+  }
+
+  const renderPage = (): JSX.Element => {
+    switch (currentPage) {
+      case 'home':
+        return (
+          <HomePage
+            projects={projects}
+            onNavigate={navigate}
+            onDeleteProject={deleteProject}
+          />
+        )
+      case 'activity-choice':
+        return <ActivityChoicePage onNavigate={navigate} />
+      case 'editor':
+        return (
+          <EditorPage
+            onNavigate={navigate}
+            initialActivity={currentActivity}
+            qrConfig={qrConfig}
+            onConfigChange={setQrConfig}
+          />
+        )
+      case 'scanner':
+        return <ScannerPage onNavigate={navigate} />
+      case 'export':
+        return <ExportPage onNavigate={navigate} qrConfig={qrConfig} />
+      default:
+        return (
+          <HomePage
+            projects={projects}
+            onNavigate={navigate}
+            onDeleteProject={deleteProject}
+          />
+        )
+    }
+  }
+
+  return <div style={{ width: '100%', height: '100%' }}>{renderPage()}</div>
 }
 
 export default App
