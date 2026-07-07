@@ -4,6 +4,8 @@ import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
 import { createQrInstance, checkContrast, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
+import { useBusinessCardConfig } from '@renderer/hooks'
+import { BusinessCardPreview } from '@renderer/components/business-card/BusinessCardPreview'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
 
 import './EditorPage.css'
@@ -20,6 +22,8 @@ interface EditorPageProps {
   templateOptions: { x: number; y: number; size: number; pageIndex: number }
   setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }) => void
   onSaveProject?: (project: ProjectConfig) => void
+  businessCardConfig?: import('@renderer/types').BusinessCardConfig
+  onBusinessCardConfigChange?: (config: import('@renderer/types').BusinessCardConfig) => void
 }
 
 const DOT_STYLES: DotStyle[] = ['square', 'dots', 'rounded', 'extra-rounded', 'classy', 'classy-rounded']
@@ -32,7 +36,9 @@ const ACTIVITY_TABS = [
   { id: 'document', label: 'Document', icon: FileImage }
 ]
 
-export function EditorPage({
+export function EditorPage(props: EditorPageProps): React.JSX.Element {
+  const {
+
   onNavigate,
   initialActivity = 'qr-code',
   qrConfig,
@@ -44,7 +50,7 @@ export function EditorPage({
   templateOptions,
   setTemplateOptions,
   onSaveProject
-}: EditorPageProps): React.JSX.Element {
+  } = props
   const [activeTab, setActiveTab] = useState<string>(initialActivity)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [useCustomCornerColor, setUseCustomCornerColor] = useState(false)
@@ -53,6 +59,20 @@ export function EditorPage({
   const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
+  const { config: bcConfigLocal, setConfig: setBcConfigLocal } = useBusinessCardConfig()
+  const bcConfig = props.businessCardConfig || bcConfigLocal
+  const setBcConfig = (newConfig: import('@renderer/types').BusinessCardConfig | ((prev: import('@renderer/types').BusinessCardConfig) => import('@renderer/types').BusinessCardConfig)) => {
+    let updatedConfig: import('@renderer/types').BusinessCardConfig;
+    if (typeof newConfig === 'function') {
+      updatedConfig = newConfig(bcConfig);
+    } else {
+      updatedConfig = newConfig;
+    }
+    setBcConfigLocal(updatedConfig)
+    if (props.onBusinessCardConfigChange) {
+      props.onBusinessCardConfigChange(updatedConfig)
+    }
+  }
   const qrRef = useRef<HTMLDivElement>(null)
 
   const handleTabChange = (tabId: string) => {
@@ -129,6 +149,32 @@ export function EditorPage({
     }
   }, [activeTab, templateBytes, templateMimeType, debouncedTemplateOptions, qrConfig, batchUrls])
 
+  const handleImportImage = async (field: 'iconUrl' | 'backgroundImageUrl') => {
+    if (window.api && window.api.openFileDialog) {
+      const result = await window.api.openFileDialog({
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg'] }],
+        properties: ['openFile']
+      })
+      if (!result.canceled && result.filePaths.length > 0) {
+        const filePath = result.filePaths[0]
+        const readResult = await window.api.readBinaryFile(filePath)
+        if (readResult.success && readResult.data) {
+          const ext = filePath.split('.').pop()?.toLowerCase() || 'png'
+          const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
+          
+          // Convert arraybuffer to base64
+          const bytes = new Uint8Array(readResult.data)
+          let binary = ''
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i])
+          }
+          const base64 = btoa(binary)
+          setBcConfig({ ...bcConfig, [field]: `data:${mime};base64,${base64}` })
+        }
+      }
+    }
+  }
+
   const handleImportDocument = async () => {
     if (window.api && window.api.openFileDialog) {
       const result = await window.api.openFileDialog({
@@ -202,7 +248,13 @@ export function EditorPage({
 
   const previewPanel = (
     <div className="editor-preview">
-      {activeTab === 'document' && pdfPreviewUrl ? (
+      {activeTab === 'business-card' ? (
+        <BusinessCardPreview 
+          config={bcConfig} 
+          qrConfig={qrConfig} 
+          previewUrl={batchUrls.length > 0 ? batchUrls[0] : qrConfig.url} 
+        />
+      ) : activeTab === 'document' && pdfPreviewUrl ? (
         <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
           <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="PDF Preview">
             <p>Impossible d'afficher le PDF</p>
@@ -452,6 +504,288 @@ export function EditorPage({
             </div>
           </div>
         </>
+      ) : activeTab === 'business-card' ? (
+        <>
+          <div className="editor-config__section">
+            <label className="editor-config__label">Taille du QR Code (Miniature)</label>
+            <input
+              type="range"
+              className="editor-config__slider"
+              min={80} max={250} step={5}
+              value={bcConfig.qrSize || 130}
+              onChange={(e) => setBcConfig({ ...bcConfig, qrSize: Number(e.target.value) })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Nom et Prénom / Entreprise</label>
+            <input
+              type="text"
+              className="editor-config__input"
+              value={bcConfig.name}
+              onChange={(e) => setBcConfig({ ...bcConfig, name: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">"Profession / Domaine"</label>
+            <input
+              type="text"
+              className="editor-config__input"
+              value={bcConfig.professionOrDomain}
+              onChange={(e) => setBcConfig({ ...bcConfig, professionOrDomain: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Lieu / Adresse</label>
+            <input
+              type="text"
+              className="editor-config__input"
+              value={bcConfig.location}
+              onChange={(e) => setBcConfig({ ...bcConfig, location: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Téléphone</label>
+            <input
+              type="tel"
+              className="editor-config__input"
+              value={bcConfig.phone}
+              onChange={(e) => setBcConfig({ ...bcConfig, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__divider" />
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Logo / Photo de profil</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <Button onClick={() => handleImportImage('iconUrl')} variant="secondary" fullWidth>
+                {bcConfig.iconUrl ? 'Changer l\'image' : 'Importer une image'}
+              </Button>
+              {bcConfig.iconUrl && (
+                <Button onClick={() => setBcConfig({ ...bcConfig, iconUrl: undefined })} variant="secondary" style={{ padding: '0.5rem', minWidth: '40px' }}>
+                  🗑️
+                </Button>
+              )}
+            </div>
+            {bcConfig.iconUrl && (
+              <div style={{ marginTop: '8px' }}>
+                <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Taille de l'image ({bcConfig.iconSize || 80}px)</span>
+                <input
+                  type="range"
+                  className="editor-config__slider"
+                  min={40} max={200} step={5}
+                  value={bcConfig.iconSize || 80}
+                  onChange={(e) => setBcConfig({ ...bcConfig, iconSize: Number(e.target.value) })}
+                />
+                <span style={{ fontSize: '12px', marginTop: '12px', marginBottom: '4px', display: 'block' }}>Style de l'image</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button
+                    variant={bcConfig.iconStyle === 'square' ? 'primary' : 'secondary'}
+                    onClick={() => setBcConfig({ ...bcConfig, iconStyle: 'square' })}
+                    style={{ flex: 1, padding: '4px' }}
+                  >
+                    Carré
+                  </Button>
+                  <Button
+                    variant={bcConfig.iconStyle === 'circle' ? 'primary' : 'secondary'}
+                    onClick={() => setBcConfig({ ...bcConfig, iconStyle: 'circle' })}
+                    style={{ flex: 1, padding: '4px' }}
+                  >
+                    Cercle
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Type d'arrière-plan</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <Button
+                variant={bcConfig.backgroundType === 'solid' ? 'primary' : 'secondary'}
+                onClick={() => setBcConfig({ ...bcConfig, backgroundType: 'solid' })}
+                style={{ flex: 1, padding: '4px' }}
+              >
+                Couleur
+              </Button>
+              <Button
+                variant={bcConfig.backgroundType === 'gradient' ? 'primary' : 'secondary'}
+                onClick={() => setBcConfig({ ...bcConfig, backgroundType: 'gradient' })}
+                style={{ flex: 1, padding: '4px' }}
+              >
+                Dégradé
+              </Button>
+            </div>
+            
+            {bcConfig.backgroundType === 'solid' && (
+              <div className="editor-config__color-row" style={{ marginBottom: '12px' }}>
+                <span className="editor-config__color-label">Couleur de fond</span>
+                <input
+                  type="color"
+                  className="editor-config__color-input"
+                  value={bcConfig.backgroundColor}
+                  onChange={(e) => setBcConfig({ ...bcConfig, backgroundColor: e.target.value })}
+                />
+              </div>
+            )}
+            
+            {bcConfig.backgroundType === 'gradient' && (
+              <div className="editor-config__color-group" style={{ marginBottom: '12px' }}>
+                <div className="editor-config__color-row">
+                  <span className="editor-config__color-label">Début du dégradé</span>
+                  <input
+                    type="color"
+                    className="editor-config__color-input"
+                    value={bcConfig.gradientStart || '#ffffff'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, gradientStart: e.target.value })}
+                  />
+                </div>
+                <div className="editor-config__color-row">
+                  <span className="editor-config__color-label">Fin du dégradé</span>
+                  <input
+                    type="color"
+                    className="editor-config__color-input"
+                    value={bcConfig.gradientEnd || '#f3f4f6'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, gradientEnd: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Couleurs du texte</label>
+            <div className="editor-config__color-group">
+              <div className="editor-config__color-row">
+                <span className="editor-config__color-label">Texte</span>
+                <input
+                  type="color"
+                  className="editor-config__color-input"
+                  value={bcConfig.textColor}
+                  onChange={(e) => setBcConfig({ ...bcConfig, textColor: e.target.value })}
+                />
+              </div>
+              <div className="editor-config__color-row">
+                <span className="editor-config__color-label">Accent</span>
+                <input
+                  type="color"
+                  className="editor-config__color-input"
+                  value={bcConfig.accentColor}
+                  onChange={(e) => setBcConfig({ ...bcConfig, accentColor: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="editor-config__divider" />
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Style du texte</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Police du nom</span>
+                  <select
+                    className="editor-config__input"
+                    value={bcConfig.nameFontFamily || 'Inter'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, nameFontFamily: e.target.value })}
+                    style={{ padding: '8px' }}
+                  >
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times</option>
+                  </select>
+                </div>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Taille du nom ({bcConfig.nameFontSize || 42}px)</span>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min={20} max={80} step={1}
+                    value={bcConfig.nameFontSize || 42}
+                    onChange={(e) => setBcConfig({ ...bcConfig, nameFontSize: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Police description</span>
+                  <select
+                    className="editor-config__input"
+                    value={bcConfig.descFontFamily || 'Inter'}
+                    onChange={(e) => setBcConfig({ ...bcConfig, descFontFamily: e.target.value })}
+                    style={{ padding: '8px' }}
+                  >
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times</option>
+                  </select>
+                </div>
+                <div>
+                  <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Taille desc ({bcConfig.descFontSize || 24}px)</span>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min={12} max={40} step={1}
+                    value={bcConfig.descFontSize || 24}
+                    onChange={(e) => setBcConfig({ ...bcConfig, descFontSize: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="editor-config__divider" />
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Bordure</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <label className="editor-config__checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={bcConfig.showBorder}
+                  onChange={(e) => setBcConfig({ ...bcConfig, showBorder: e.target.checked })}
+                />
+                <span className="editor-config__color-label">Afficher une bordure</span>
+              </label>
+              
+              {bcConfig.showBorder && (
+                <>
+                  <div className="editor-config__color-row">
+                    <span className="editor-config__color-label">Couleur</span>
+                    <input
+                      type="color"
+                      className="editor-config__color-input"
+                      value={bcConfig.borderColor}
+                      onChange={(e) => setBcConfig({ ...bcConfig, borderColor: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Épaisseur ({bcConfig.borderWidth || 1}px)</span>
+                    <input
+                      type="range"
+                      className="editor-config__slider"
+                      min={1} max={20} step={1}
+                      value={bcConfig.borderWidth || 1}
+                      onChange={(e) => setBcConfig({ ...bcConfig, borderWidth: Number(e.target.value) })}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </>
       ) : activeTab === 'document' ? (
         <div className="editor-config__section">
           {!templateBytes ? (
@@ -678,6 +1012,7 @@ export function EditorPage({
                           updatedAt: new Date().toISOString(),
                           activityType: activeTab as ActivityType,
                           qrConfig,
+                          businessCardConfig: bcConfig,
                           filePath
                         })
                       }
