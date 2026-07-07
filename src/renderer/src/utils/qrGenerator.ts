@@ -7,6 +7,7 @@ export function createQrInstance(config: QrConfig): any {
   return new QRCodeStyling({
     width: config.size,
     height: config.size,
+    type: 'svg',
     margin: config.margin,
     data: config.url,
     dotsOptions: {

@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4101573a-d58f-4661-9db6-93b19f1c74df" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/business-card/BusinessCardPreview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/business-card/BusinessCardPreview.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/EditorPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/EditorPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/utils/qrGenerator.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/utils/qrGenerator.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

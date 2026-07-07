@@ -45,7 +45,7 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
       const cardQrConfig = {
         ...qrConfig,
         url: previewUrl,
-        size: config.qrSize || 130,
+        size: 2000, // Generate at high resolution to avoid any internal module margin rounding
         margin: 0
       }
       const qr = createQrInstance(cardQrConfig)
