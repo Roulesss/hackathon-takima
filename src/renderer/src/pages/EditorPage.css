@@ -217,3 +217,117 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
 }
+
+/* Document Integration UI */
+.editor-document__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-align: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.editor-document__dropzone:hover, .editor-document__dropzone.is-dragging {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.editor-document__dropzone-icon {
+  color: var(--color-accent);
+  opacity: 0.8;
+  margin-bottom: var(--space-1);
+}
+
+.editor-document__dropzone-text {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.editor-document__dropzone-subtext {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.editor-document__file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.editor-document__file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.editor-document__file-icon {
+  color: var(--color-accent);
+}
+
+.editor-document__file-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  word-break: break-all;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-document__card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.editor-document__card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-md);
+}
+
+.editor-document__card-icon {
+  color: var(--color-text-secondary);
+}
+
+.editor-document__slider-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.editor-document__slider-row:last-child {
+  margin-bottom: 0;
+}
+
+.editor-document__slider-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  min-width: 80px;
+}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
@@ -49,6 +49,7 @@ export function EditorPage({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [useCustomCornerColor, setUseCustomCornerColor] = useState(false)
   const [useCustomCornerDotColor, setUseCustomCornerDotColor] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
@@ -442,23 +443,73 @@ export function EditorPage({
         </>
       ) : activeTab === 'document' ? (
         <div className="editor-config__section">
-          <h2 className="editor-config__title" style={{ marginBottom: '1rem' }}>Intégration Document / Image</h2>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
-            <Button onClick={handleImportDocument} variant="secondary" fullWidth style={{ flex: 1 }}>
-              {templateBytes ? 'Changer de fichier' : 'Importer un PDF ou une image'}
-            </Button>
-            {templateBytes && (
-              <Button onClick={handleClearTemplate} variant="secondary" style={{ padding: '0.5rem', minWidth: '40px' }}>
-                🗑️
-              </Button>
-            )}
-          </div>
-          
-          {templateBytes && (
-            <div className="editor-config__style-grid" style={{ gridTemplateColumns: '1fr', gap: '1rem', display: 'grid' }}>
-              <div className="editor-config__section" style={{ margin: 0 }}>
-                <label className="editor-config__label">Position X</label>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {!templateBytes ? (
+            <div
+              className={`editor-document__dropzone ${isDragging ? 'is-dragging' : ''}`}
+              onClick={handleImportDocument}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDragging(true)
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault()
+                setIsDragging(false)
+              }}
+              onDrop={async (e) => {
+                e.preventDefault()
+                setIsDragging(false)
+                const file = e.dataTransfer.files?.[0]
+                if (file) {
+                  const ext = file.name.split('.').pop()?.toLowerCase()
+                  const mimeType = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : 'image/jpeg'
+                  if (['pdf', 'png', 'jpg', 'jpeg'].includes(ext || '')) {
+                    const filePath = (file as File & { path: string }).path
+                    const readResult = await window.api.readBinaryFile(filePath)
+                    if (readResult.success && readResult.data) {
+                      setTemplateBytes(new Uint8Array(readResult.data))
+                      setTemplateMimeType(mimeType)
+                    }
+                  }
+                }
+              }}
+            >
+              <UploadCloud size={48} className="editor-document__dropzone-icon" />
+              <span className="editor-document__dropzone-text">Importer un document</span>
+              <span className="editor-document__dropzone-subtext">
+                Glissez-déposez un PDF ou une image, ou cliquez pour parcourir
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="editor-document__file-card">
+                <div className="editor-document__file-info">
+                  {templateMimeType === 'application/pdf' ? (
+                    <FileText size={24} className="editor-document__file-icon" />
+                  ) : (
+                    <ImageIcon size={24} className="editor-document__file-icon" />
+                  )}
+                  <span className="editor-document__file-name">
+                    {templateMimeType === 'application/pdf' ? 'Document PDF' : 'Image'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button variant="secondary" size="sm" onClick={handleImportDocument}>
+                    Remplacer
+                  </Button>
+                  <IconButton icon={Trash2} onClick={handleClearTemplate} tooltip="Supprimer" />
+                </div>
+              </div>
+
+              <div className="editor-document__card">
+                <div className="editor-document__card-header">
+                  <MoveHorizontal size={18} className="editor-document__card-icon" />
+                  Positionnement & Taille
+                </div>
+                
+                <div className="editor-document__slider-row">
+                  <div className="editor-document__slider-label">
+                    <MoveHorizontal size={14} className="editor-document__card-icon" /> X
+                  </div>
                   <input
                     type="range"
                     className="editor-config__slider"
@@ -473,13 +524,14 @@ export function EditorPage({
                     className="editor-config__input"
                     value={templateOptions.x}
                     onChange={(e) => setTemplateOptions({ ...templateOptions, x: parseInt(e.target.value) || 0 })}
-                    style={{ width: '80px', margin: 0 }}
+                    style={{ width: '70px', margin: 0, padding: '4px 8px' }}
                   />
                 </div>
-              </div>
-              <div className="editor-config__section" style={{ margin: 0 }}>
-                <label className="editor-config__label">Position Y</label>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+
+                <div className="editor-document__slider-row">
+                  <div className="editor-document__slider-label">
+                    <MoveVertical size={14} className="editor-document__card-icon" /> Y
+                  </div>
                   <input
                     type="range"
                     className="editor-config__slider"
@@ -494,13 +546,14 @@ export function EditorPage({
                     className="editor-config__input"
                     value={templateOptions.y}
                     onChange={(e) => setTemplateOptions({ ...templateOptions, y: parseInt(e.target.value) || 0 })}
-                    style={{ width: '80px', margin: 0 }}
+                    style={{ width: '70px', margin: 0, padding: '4px 8px' }}
                   />
                 </div>
-              </div>
-              <div className="editor-config__section" style={{ margin: 0 }}>
-                <label className="editor-config__label">Taille</label>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+
+                <div className="editor-document__slider-row">
+                  <div className="editor-document__slider-label">
+                    <Maximize size={14} className="editor-document__card-icon" /> Taille
+                  </div>
                   <input
                     type="range"
                     className="editor-config__slider"
@@ -515,26 +568,34 @@ export function EditorPage({
                     className="editor-config__input"
                     value={templateOptions.size}
                     onChange={(e) => setTemplateOptions({ ...templateOptions, size: parseInt(e.target.value) || 0 })}
-                    style={{ width: '80px', margin: 0 }}
+                    style={{ width: '70px', margin: 0, padding: '4px 8px' }}
                   />
                 </div>
               </div>
+
               {templateMimeType === 'application/pdf' && (
-                <div className="editor-config__section" style={{ margin: 0 }}>
-                  <label className="editor-config__label">Numéro de page</label>
-                  <input
-                    type="number"
-                    className="editor-config__input"
-                    value={templateOptions.pageIndex + 1}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value)
-                      setTemplateOptions({ ...templateOptions, pageIndex: isNaN(val) ? 0 : Math.max(0, val - 1) })
-                    }}
-                    min="1"
-                  />
+                <div className="editor-document__card">
+                  <div className="editor-document__card-header">
+                    <FileText size={18} className="editor-document__card-icon" />
+                    Options PDF
+                  </div>
+                  <div className="editor-document__slider-row">
+                    <div className="editor-document__slider-label">Numéro de page</div>
+                    <input
+                      type="number"
+                      className="editor-config__input"
+                      value={templateOptions.pageIndex + 1}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value)
+                        setTemplateOptions({ ...templateOptions, pageIndex: isNaN(val) ? 0 : Math.max(0, val - 1) })
+                      }}
+                      min="1"
+                      style={{ flex: 1, margin: 0 }}
+                    />
+                  </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       ) : (
