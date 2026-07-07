@@ -129,8 +129,10 @@ function Scene({ textureDataUrl, borderRadius }: { textureDataUrl: string | null
       <OrbitControls
         makeDefault
         enablePan={false}
-        minPolarAngle={Math.PI / 6}
-        maxPolarAngle={Math.PI / 1.5}
+        minPolarAngle={Math.PI / 2.8}
+        maxPolarAngle={Math.PI / 1.8}
+        minAzimuthAngle={-Math.PI / 4}
+        maxAzimuthAngle={Math.PI / 4}
         enableZoom={true}
         minDistance={3}
         maxDistance={12}
@@ -182,6 +184,20 @@ export function BusinessCard3DPreview({ config, qrConfig, previewUrl }: Business
           disableScaling={true}
         />
       </div>
+
+      {/* Fixed dark blurred circle behind the card */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '650px',
+        height: '650px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0) 70%)',
+        pointerEvents: 'none',
+        zIndex: 0
+      }} />
 
       <Suspense
         fallback={
