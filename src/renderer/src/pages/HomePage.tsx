@@ -10,7 +10,7 @@ interface HomePageProps {
   onDeleteProject: (id: string) => void
 }
 
-export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProps): JSX.Element {
+export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProps): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light'

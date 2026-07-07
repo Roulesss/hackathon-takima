@@ -14,7 +14,7 @@ export function Card({
   className = '',
   onClick,
   ...props
-}: CardProps): JSX.Element {
+}: CardProps): React.JSX.Element {
   return (
     <div
       className={`card card--pad-${padding} ${hoverable ? 'card--hoverable' : ''} ${onClick ? 'card--clickable' : ''} ${className}`}

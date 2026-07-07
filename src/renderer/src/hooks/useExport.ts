@@ -22,7 +22,7 @@ export function useExport() {
       setExporting(true)
       setError(null)
       try {
-        let blob: Blob | null = null
+        let blob: Blob | null | undefined = null
         let defaultFilename = ''
 
         if (format === 'svg') {
@@ -36,7 +36,7 @@ export function useExport() {
           if (pngBlob) {
             const arrayBuffer = await pngBlob.arrayBuffer()
             const pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))
-            blob = new Blob([pdfBytes], { type: 'application/pdf' })
+            blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
             defaultFilename = filename || 'qr-code.pdf'
           }
         }

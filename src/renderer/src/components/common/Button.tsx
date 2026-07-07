@@ -19,7 +19,7 @@ export function Button({
   className = '',
   type = 'button',
   ...props
-}: ButtonProps): JSX.Element {
+}: ButtonProps): React.JSX.Element {
   const iconSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16
 
   return (

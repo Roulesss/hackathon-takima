@@ -4,7 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4101573a-d58f-4661-9db6-93b19f1c74df" name="Changes" comment="" />
+    <list default="true" id="4101573a-d58f-4661-9db6-93b19f1c74df" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Button.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Card.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/IconButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/IconButton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/common/Tabs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/common/Tabs.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/layout/SplitLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/layout/SplitLayout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/components/layout/Toolbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/components/layout/Toolbar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/hooks/useExport.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/hooks/useExport.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ActivityChoicePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ActivityChoicePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/EditorPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/EditorPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ExportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ExportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/HomePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/HomePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/pages/ScannerPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/pages/ScannerPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/utils/qrGenerator.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/utils/qrGenerator.ts" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -13,15 +29,16 @@
   <component name="CopilotPersistence">
     <persistenceIdMap>
       <entry key="_/Users/hexalo/Documents/applications/hackathon-takima" value="3GATjvdrCFkDommCnXnCnh3dZJb" />
+      <entry key="_/Users/hexalo/Documents/applications/hackathon-takima_2" value="3GAsWcmhUc2gRM1WPz8RWTBvHSu" />
     </persistenceIdMap>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 6,
-  "fromUser": false
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6,
+  &quot;fromUser&quot;: false
+}</component>
   <component name="ProjectId" id="3GATjvdrCFkDommCnXnCnh3dZJb" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -36,10 +53,10 @@
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "copilot.chat.legacySessionMetadata.migrated": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "gem",
     "javascript.preferred.runtime.type.id": "node",
     "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "/Users/hexalo/Documents/applications/hackathon-takima",
+    "last_opened_file_path": "/Users/hexalo/Documents/applications/hackathon-takima_2",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -65,6 +82,7 @@
       <option name="presentableId" value="Default" />
       <updated>1783413512243</updated>
       <workItem from="1783413513263" duration="1019000" />
+      <workItem from="1783425741494" duration="312000" />
     </task>
     <servers />
   </component>

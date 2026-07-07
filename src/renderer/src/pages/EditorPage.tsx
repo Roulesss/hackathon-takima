@@ -29,7 +29,7 @@ export function EditorPage({
   initialActivity = 'qr-code',
   qrConfig,
   onConfigChange
-}: EditorPageProps): JSX.Element {
+}: EditorPageProps): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<string>(initialActivity)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [useCustomCornerColor, setUseCustomCornerColor] = useState(false)

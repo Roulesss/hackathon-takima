@@ -17,7 +17,7 @@ export function Modal({
   title,
   children,
   width = 'md'
-}: ModalProps): JSX.Element | null {
+}: ModalProps): React.JSX.Element | null {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -26,10 +26,9 @@ export function Modal({
   )
 
   useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
-    }
+    if (!isOpen) return
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, handleKeyDown])
 
   if (!isOpen) return null

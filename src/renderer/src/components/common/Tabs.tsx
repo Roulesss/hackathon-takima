@@ -13,7 +13,7 @@ interface TabsProps {
   onTabChange: (id: string) => void
 }
 
-export function Tabs({ tabs, activeTab, onTabChange }: TabsProps): JSX.Element {
+export function Tabs({ tabs, activeTab, onTabChange }: TabsProps): React.JSX.Element {
   return (
     <div className="tabs">
       {tabs.map((tab) => {

@@ -37,7 +37,7 @@ const activities = [
   }
 ]
 
-export function ActivityChoicePage({ onNavigate }: ActivityChoicePageProps): JSX.Element {
+export function ActivityChoicePage({ onNavigate }: ActivityChoicePageProps): React.JSX.Element {
   return (
     <div className="activity-choice page-enter page-active">
       <div className="activity-choice__back">

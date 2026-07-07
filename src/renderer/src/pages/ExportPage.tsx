@@ -24,7 +24,7 @@ const FORMAT_OPTIONS: Array<{
   { format: 'pdf', icon: FileText, title: 'PDF', description: 'Document prêt à imprimer' }
 ]
 
-export function ExportPage({ onNavigate, qrConfig }: ExportPageProps): JSX.Element {
+export function ExportPage({ onNavigate, qrConfig }: ExportPageProps): React.JSX.Element {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('png')
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
   const [batchZip, setBatchZip] = useState(false)

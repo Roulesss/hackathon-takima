@@ -15,7 +15,7 @@ export function SplitLayout({
   defaultLeftSize = 50,
   minLeftSize = 20,
   minRightSize = 20
-}: SplitLayoutProps): JSX.Element {
+}: SplitLayoutProps): React.JSX.Element {
   const [leftSize, setLeftSize] = useState(defaultLeftSize)
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)

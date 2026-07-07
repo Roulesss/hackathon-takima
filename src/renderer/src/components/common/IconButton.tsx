@@ -16,7 +16,7 @@ export function IconButton({
   variant = 'ghost',
   className = '',
   ...props
-}: IconButtonProps): JSX.Element {
+}: IconButtonProps): React.JSX.Element {
   return (
     <button
       className={`icon-btn icon-btn--${size} icon-btn--${variant} ${className}`}

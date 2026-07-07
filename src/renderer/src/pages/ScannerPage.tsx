@@ -10,7 +10,7 @@ interface ScannerPageProps {
   onNavigate: (page: string, data?: Record<string, unknown>) => void
 }
 
-export function ScannerPage({ onNavigate }: ScannerPageProps): JSX.Element {
+export function ScannerPage({ onNavigate }: ScannerPageProps): React.JSX.Element {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState<{ data?: string; error?: string } | null>(null)
   const [scanning, setScanning] = useState(false)

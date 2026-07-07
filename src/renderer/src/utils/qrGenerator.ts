@@ -1,7 +1,9 @@
-import QRCodeStyling from 'qr-code-styling'
+import * as QRCodeStylingLib from 'qr-code-styling'
 import type { QrConfig } from '../types/qr'
 
-export function createQrInstance(config: QrConfig): QRCodeStyling {
+const QRCodeStyling = (QRCodeStylingLib as any).default || QRCodeStylingLib
+
+export function createQrInstance(config: QrConfig): any {
   return new QRCodeStyling({
     width: config.size,
     height: config.size,
@@ -22,13 +24,15 @@ export function createQrInstance(config: QrConfig): QRCodeStyling {
       color: config.style.colors.cornerDotColor || config.style.colors.foreground,
       type: config.style.cornerDotStyle
     },
-    imageOptions: config.logo
-      ? {
-          crossOrigin: 'anonymous',
-          margin: 5
-        }
-      : undefined,
-    image: config.logo?.src
+    ...(config.logo ? {
+      imageOptions: {
+        crossOrigin: 'anonymous',
+        margin: 5,
+        hideBackgroundDots: true,
+        imageSize: 0.4
+      },
+      image: config.logo.src
+    } : {})
   })
 }
 
@@ -38,7 +42,7 @@ export async function exportQrAsBlob(
 ): Promise<Blob | undefined> {
   const qr = createQrInstance(config)
   const blob = await qr.getRawData(format === 'svg' ? 'svg' : 'png')
-  return blob ?? undefined
+  return (blob as Blob) ?? undefined
 }
 
 export async function exportQrAsDataUrl(config: QrConfig): Promise<string> {
@@ -48,6 +52,6 @@ export async function exportQrAsDataUrl(config: QrConfig): Promise<string> {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)
     reader.onerror = reject
-    reader.readAsDataURL(blob)
+    reader.readAsDataURL(blob as Blob)
   })
 }

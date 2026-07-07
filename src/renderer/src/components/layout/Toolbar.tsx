@@ -7,7 +7,7 @@ interface ToolbarProps {
   right?: ReactNode
 }
 
-export function Toolbar({ left, center, right }: ToolbarProps): JSX.Element {
+export function Toolbar({ left, center, right }: ToolbarProps): React.JSX.Element {
   return (
     <div className="toolbar">
       <div className="toolbar__left">{left}</div>

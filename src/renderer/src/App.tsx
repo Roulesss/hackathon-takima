@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { HomePage, ActivityChoicePage, EditorPage, ScannerPage, ExportPage } from './pages'
 import { useQrConfig } from './hooks'
 import { useProjects } from './hooks'
-import type { ActivityType, ProjectConfig } from './types'
+import type { ActivityType } from './types'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './styles/global.css'
 
 export type PageId = 'home' | 'activity-choice' | 'editor' | 'scanner' | 'export'
 
-function App(): JSX.Element {
+function App(): React.JSX.Element {
   const [currentPage, setCurrentPage] = useState<PageId>('home')
   const [currentActivity, setCurrentActivity] = useState<ActivityType>('qr-code')
   const { config: qrConfig, setConfig: setQrConfig } = useQrConfig()
-  const { projects, addProject, deleteProject } = useProjects()
+  const { projects, deleteProject } = useProjects()
 
   const navigate = (page: string, data?: Record<string, unknown>): void => {
     setCurrentPage(page as PageId)
@@ -23,12 +24,12 @@ function App(): JSX.Element {
     } else if (data?.projectId) {
       const project = projects.find(p => p.id === data.projectId)
       if (project) {
-        setQrConfig(project.config)
+        setQrConfig(project.qrConfig)
       }
     }
   }
 
-  const renderPage = (): JSX.Element => {
+  const renderPage = (): React.JSX.Element => {
     switch (currentPage) {
       case 'home':
         return (
@@ -64,7 +65,13 @@ function App(): JSX.Element {
     }
   }
 
-  return <div style={{ width: '100%', height: '100%' }}>{renderPage()}</div>
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <ErrorBoundary>
+        {renderPage()}
+      </ErrorBoundary>
+    </div>
+  )
 }
 
 export default App
