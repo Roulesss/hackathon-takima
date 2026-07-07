@@ -12,7 +12,7 @@ function App(): React.JSX.Element {
   const [currentPage, setCurrentPage] = useState<PageId>('home')
   const [currentActivity, setCurrentActivity] = useState<ActivityType>('qr-code')
   const { config: qrConfig, setConfig: setQrConfig } = useQrConfig()
-  const { projects, deleteProject } = useProjects()
+  const { projects, deleteProject, addProject } = useProjects()
 
   const navigate = (page: string, data?: Record<string, unknown>): void => {
     setCurrentPage(page as PageId)
@@ -48,6 +48,7 @@ function App(): React.JSX.Element {
             initialActivity={currentActivity}
             qrConfig={qrConfig}
             onConfigChange={setQrConfig}
+            onSaveProject={addProject}
           />
         )
       case 'scanner':

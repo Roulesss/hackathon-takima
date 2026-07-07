@@ -5,6 +5,7 @@
   padding: var(--space-1);
   background: var(--color-bg-tertiary);
   border-radius: var(--radius-md);
+  -webkit-app-region: no-drag;
 }
 
 .tabs__tab {
@@ -22,6 +23,7 @@
   transition: all var(--transition-normal);
   white-space: nowrap;
   height: 32px;
+  -webkit-app-region: no-drag;
 }
 
 .tabs__tab:hover {

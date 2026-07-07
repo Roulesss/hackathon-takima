@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Settings, QrCode, Trash2 } from 'lucide-react'
-import { Button, IconButton, Card, Modal } from '@renderer/components/common'
+import { Button, IconButton, Card, SettingsModal, ProjectThumbnail } from '@renderer/components/common'
 import type { ProjectConfig } from '@renderer/types'
 import './HomePage.css'
 
@@ -12,15 +12,6 @@ interface HomePageProps {
 
 export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProps): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light'
-  })
-
-  const toggleTheme = (): void => {
-    const next = theme === 'light' ? 'dark' : 'light'
-    setTheme(next)
-    document.documentElement.setAttribute('data-theme', next)
-  }
 
   const formatDate = (dateStr: string): string => {
     try {
@@ -112,8 +103,8 @@ export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProp
                   onClick={() => onNavigate('editor', { projectId: project.id, activity: project.activityType })}
                 >
                   <div className="home__project-preview">
-                    {project.thumbnail ? (
-                      <img src={project.thumbnail} alt={project.name} />
+                    {project.qrConfig ? (
+                      <ProjectThumbnail qrConfig={project.qrConfig} size={150} />
                     ) : (
                       <QrCode className="home__project-placeholder" />
                     )}
@@ -154,34 +145,7 @@ export function HomePage({ projects, onNavigate, onDeleteProject }: HomePageProp
         onClick={() => setSettingsOpen(true)}
       />
 
-      <Modal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} title="Paramètres">
-        <div className="settings">
-          <div className="settings__group">
-            <label className="settings__label">Thème</label>
-            <Button variant="secondary" size="sm" onClick={toggleTheme}>
-              {theme === 'light' ? '☀️ Clair' : '🌙 Sombre'}
-            </Button>
-          </div>
-          <div className="settings__group">
-            <label className="settings__label">Emplacement des configurations</label>
-            <input
-              type="text"
-              className="settings__input"
-              placeholder="~/Documents/QR Forge/configs"
-              readOnly
-            />
-          </div>
-          <div className="settings__group">
-            <label className="settings__label">Emplacement d'export par défaut</label>
-            <input
-              type="text"
-              className="settings__input"
-              placeholder="~/Documents/QR Forge/exports"
-              readOnly
-            />
-          </div>
-        </div>
-      </Modal>
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

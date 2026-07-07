@@ -8,6 +8,7 @@
   transition: all var(--transition-normal);
   color: var(--color-text-secondary);
   position: relative;
+  -webkit-app-region: no-drag;
 }
 
 .icon-btn:hover {

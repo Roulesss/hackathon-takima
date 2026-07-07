@@ -25,6 +25,7 @@ export interface QrConfig {
     src: string
     size: number
   }
+  batchUrls?: string[]
 }
 
 export const DEFAULT_QR_CONFIG: QrConfig = {

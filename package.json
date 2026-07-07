@@ -26,6 +26,7 @@
     "chroma-js": "^3.2.0",
     "jimp": "^1.6.1",
     "jsqr": "^1.4.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.23.0",
     "pdf-lib": "^1.17.1",
     "qr-code-styling": "^1.9.2",
