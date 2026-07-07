@@ -47,7 +47,7 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
       }
       const qr = createQrInstance(cardQrConfig)
       qr.append(qrRef.current)
-    }, [qrConfig, previewUrl])
+    }, [qrConfig, previewUrl, config.qrSize])
 
     const cardStyle: React.CSSProperties = {
       background: config.backgroundType === 'gradient' 

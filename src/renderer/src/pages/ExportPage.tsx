@@ -34,6 +34,7 @@ const FORMAT_OPTIONS: Array<{
 export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityType, templateBytes, templateMimeType, templateOptions }: ExportPageProps): React.JSX.Element {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('png')
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
+  const [bcResolution, setBcResolution] = useState<number>(2)
   const { exportQr, exporting, error } = useExport()
   const qrRef = useRef<HTMLDivElement>(null)
   const bcRef = useRef<HTMLDivElement>(null)
@@ -100,7 +101,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
       try {
         const dataUrl = await htmlToImage.toPng(bcRef.current, {
           quality: 1,
-          pixelRatio: 2,
+          pixelRatio: bcResolution,
         })
         const a = document.createElement('a')
         a.href = dataUrl
@@ -187,18 +188,44 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
       )}
 
       {activityType === 'business-card' && (
-        <div className="export-config__formats">
-          <Card
-            padding="md"
-            className="export-config__format-card export-config__format-card--active"
-          >
-            <div className="export-config__format-header">
-              <FileImage className="export-config__format-icon" />
-              <span className="export-config__format-title">PNG</span>
+        <>
+          <div className="export-config__formats">
+            <Card
+              padding="md"
+              className="export-config__format-card export-config__format-card--active"
+            >
+              <div className="export-config__format-header">
+                <FileImage className="export-config__format-icon" />
+                <span className="export-config__format-title">PNG</span>
+              </div>
+              <p className="export-config__format-desc">Format image pour la carte de visite complète</p>
+            </Card>
+          </div>
+          
+          <div className="export-config__batch" style={{ marginTop: '24px' }}>
+            <h3 className="export-config__batch-title">Résolution d'export</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Button 
+                variant={bcResolution === 1 ? 'primary' : 'secondary'} 
+                onClick={() => setBcResolution(1)}
+              >
+                Standard (Web)
+              </Button>
+              <Button 
+                variant={bcResolution === 2 ? 'primary' : 'secondary'} 
+                onClick={() => setBcResolution(2)}
+              >
+                Haute Définition (x2)
+              </Button>
+              <Button 
+                variant={bcResolution === 4 ? 'primary' : 'secondary'} 
+                onClick={() => setBcResolution(4)}
+              >
+                Très Haute Qualité / Impression (x4)
+              </Button>
             </div>
-            <p className="export-config__format-desc">Image haute qualité, idéale pour l'impression ou le partage web</p>
-          </Card>
-        </div>
+          </div>
+        </>
       )}
 
       <div className="export-config__divider" />
