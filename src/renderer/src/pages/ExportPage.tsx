@@ -125,7 +125,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
       let printUrl = ''
       
       if (activityType === 'business-card' && bcRef.current && businessCardConfig) {
-        const dataUrl = await htmlToImage.toPng(bcRef.current, { quality: 1, pixelRatio: bcResolution })
+        const dataUrl = await htmlToImage.toPng(bcRef.current, { quality: 1, pixelRatio: bcResolution, style: { transform: 'scale(1)' } })
         printUrl = dataUrl
       } else if (activityType === 'document' && templateBytes && templateMimeType) {
         if (pdfPreviewUrl) {
@@ -165,7 +165,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
           for (let i = 0; i < urls.length; i++) {
             setPreviewIndex(i)
             await new Promise(r => setTimeout(r, 150)) // Wait for DOM to render the new QR code
-            const dataUrl = await htmlToImage.toPng(bcRef.current, { quality: 1, pixelRatio: bcResolution })
+            const dataUrl = await htmlToImage.toPng(bcRef.current, { quality: 1, pixelRatio: bcResolution, style: { transform: 'scale(1)' } })
             const base64Data = dataUrl.split(',')[1]
             const binaryString = atob(base64Data)
             const bytes = new Uint8Array(binaryString.length)
@@ -197,6 +197,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
           const dataUrl = await htmlToImage.toPng(bcRef.current, {
             quality: 1,
             pixelRatio: bcResolution,
+            style: { transform: 'scale(1)' }
           })
           const a = document.createElement('a')
           a.href = dataUrl
