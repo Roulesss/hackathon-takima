@@ -9,10 +9,7 @@ import JSZip from 'jszip'
 export interface TemplateExportOptions {
   templateBytes?: Uint8Array
   templateMimeType?: string
-  x: number
-  y: number
-  size: number
-  pageIndex: number
+  templateOptionsArray?: { x: number; y: number; size: number; pageIndex: number }[]
   batchNaming?: string
 }
 
@@ -39,105 +36,99 @@ export function useExport() {
         
         if (urls.length > 1) {
           // Batch export
-          if (window.api && window.api.saveFileDialog) {
-            const zip = new JSZip()
+          if (options?.templateBytes && options.templateMimeType) {
+            // SINGLE FILE WITH MULTIPLE QR CODES
+            let currentBytes = options.templateBytes
             for (let i = 0; i < urls.length; i++) {
               const batchConfig = { ...config, url: urls[i] }
-              let blob: Blob | null | undefined = null
-              let fileExtension = format
-
-              if (format === 'svg') {
-                blob = await exportQrAsBlob(batchConfig, 'svg')
-              } else if (format === 'png') {
-                blob = await exportQrAsBlob(batchConfig, 'png')
-                if (blob && options?.templateBytes && options.templateMimeType && options.templateMimeType !== 'application/pdf') {
-                  const arrayBuffer = await blob.arrayBuffer()
-                  const imgBytes = await addQrToImage(
-                    options.templateBytes,
-                    new Uint8Array(arrayBuffer),
-                    { x: options.x, y: options.y, size: options.size },
-                    options.templateMimeType
-                  )
-                  blob = new Blob([imgBytes as any], { type: options.templateMimeType })
-                  fileExtension = options.templateMimeType === 'image/jpeg' ? 'jpg' : ('png' as any)
-                }
-              } else if (format === 'pdf') {
-                const pngBlob = await exportQrAsBlob(batchConfig, 'png')
-                if (pngBlob) {
-                  const arrayBuffer = await pngBlob.arrayBuffer()
-                  let pdfBytes: Uint8Array
-                  if (options?.templateBytes && options.templateMimeType === 'application/pdf') {
-                    pdfBytes = await addQrToPdf(
-                      options.templateBytes,
-                      new Uint8Array(arrayBuffer),
-                      { pageIndex: options.pageIndex, x: options.x, y: options.y, size: options.size }
-                    )
-                  } else {
-                    pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))
-                  }
-                  blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
-                }
-              }
+              const pngBlob = await exportQrAsBlob(batchConfig, 'png')
+              if (!pngBlob) continue
+              const arrayBuffer = await pngBlob.arrayBuffer()
+              const opt = options.templateOptionsArray?.[i] || options.templateOptionsArray?.[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
               
-              if (blob) {
-                const arrayBuffer = await blob.arrayBuffer()
-                                const naming = options?.batchNaming || 'qr_{index}'
-                zip.file(`${naming.replace('{index}', String(i + 1))}.${fileExtension}`, arrayBuffer)
+              if (options.templateMimeType === 'application/pdf') {
+                currentBytes = await addQrToPdf(currentBytes, new Uint8Array(arrayBuffer), opt)
+              } else {
+                currentBytes = await addQrToImage(currentBytes, new Uint8Array(arrayBuffer), { x: opt.x, y: opt.y, size: opt.size }, options.templateMimeType)
               }
             }
-            
-            const zipBlob = await zip.generateAsync({ type: 'blob' })
-            const arrayBuffer = await zipBlob.arrayBuffer()
-            const { canceled, filePath } = await window.api.saveFileDialog({
-              defaultPath: filename ? `${filename.split('.')[0]}.zip` : 'qrs.zip',
-              filters: [{ name: 'ZIP', extensions: ['zip'] }]
-            })
-            if (!canceled && filePath) {
-              await window.api.writeBinaryFile(filePath, arrayBuffer)
+            const blob = new Blob([currentBytes as any], { type: options.templateMimeType })
+            const ext = options.templateMimeType === 'application/pdf' ? 'pdf' : (options.templateMimeType === 'image/jpeg' ? 'jpg' : 'png')
+            const defaultFilename = filename || `document-batch.${ext}`
+            if (window.api && window.api.saveFileDialog) {
+              const arrayBuffer = await blob.arrayBuffer()
+              const { canceled, filePath } = await window.api.saveFileDialog({
+                defaultPath: defaultFilename,
+                filters: [{ name: ext.toUpperCase(), extensions: [ext] }]
+              })
+              if (!canceled && filePath) {
+                await window.api.writeBinaryFile(filePath, arrayBuffer)
+              }
+            } else {
+              downloadBlob(blob, defaultFilename)
             }
           } else {
-            // Fallback for browser: download multiple files
-            for (let i = 0; i < urls.length; i++) {
-              const batchConfig = { ...config, url: urls[i] }
-              let blob: Blob | null | undefined = null
-              let fileExtension = format
-              
-              if (format === 'svg') {
-                blob = await exportQrAsBlob(batchConfig, 'svg')
-              } else if (format === 'png') {
-                blob = await exportQrAsBlob(batchConfig, 'png')
-                if (blob && options?.templateBytes && options.templateMimeType && options.templateMimeType !== 'application/pdf') {
-                  const arrayBuffer = await blob.arrayBuffer()
-                  const imgBytes = await addQrToImage(
-                    options.templateBytes,
-                    new Uint8Array(arrayBuffer),
-                    { x: options.x, y: options.y, size: options.size },
-                    options.templateMimeType
-                  )
-                  blob = new Blob([imgBytes as any], { type: options.templateMimeType })
-                  fileExtension = options.templateMimeType === 'image/jpeg' ? 'jpg' : ('png' as any)
-                }
-              } else if (format === 'pdf') {
-                const pngBlob = await exportQrAsBlob(batchConfig, 'png')
-                if (pngBlob) {
-                  const arrayBuffer = await pngBlob.arrayBuffer()
-                  let pdfBytes: Uint8Array
-                  if (options?.templateBytes && options.templateMimeType === 'application/pdf') {
-                    pdfBytes = await addQrToPdf(
-                      options.templateBytes,
-                      new Uint8Array(arrayBuffer),
-                      { pageIndex: options.pageIndex, x: options.x, y: options.y, size: options.size }
-                    )
-                  } else {
-                    pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))
+            // STANDARD BATCH EXPORT (ZIP of individual files)
+            if (window.api && window.api.saveFileDialog) {
+              const zip = new JSZip()
+              for (let i = 0; i < urls.length; i++) {
+                const batchConfig = { ...config, url: urls[i] }
+                let blob: Blob | null | undefined = null
+                let fileExtension = format
+  
+                if (format === 'svg') {
+                  blob = await exportQrAsBlob(batchConfig, 'svg')
+                } else if (format === 'png') {
+                  blob = await exportQrAsBlob(batchConfig, 'png')
+                } else if (format === 'pdf') {
+                  const pngBlob = await exportQrAsBlob(batchConfig, 'png')
+                  if (pngBlob) {
+                    const arrayBuffer = await pngBlob.arrayBuffer()
+                    const pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))
+                    blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
                   }
-                  blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
+                }
+                
+                if (blob) {
+                  const arrayBuffer = await blob.arrayBuffer()
+                  const naming = options?.batchNaming || 'qr_{index}'
+                  zip.file(`${naming.replace('{index}', String(i + 1))}.${fileExtension}`, arrayBuffer)
                 }
               }
               
-              if (blob) {
-                                const naming = options?.batchNaming || 'qr_{index}'
-                downloadBlob(blob, `${naming.replace('{index}', String(i + 1))}.${fileExtension}`)
+              const zipBlob = await zip.generateAsync({ type: 'blob' })
+              const arrayBuffer = await zipBlob.arrayBuffer()
+              const { canceled, filePath } = await window.api.saveFileDialog({
+                defaultPath: filename ? `${filename.split('.')[0]}.zip` : 'qrs.zip',
+                filters: [{ name: 'ZIP', extensions: ['zip'] }]
+              })
+              if (!canceled && filePath) {
+                await window.api.writeBinaryFile(filePath, arrayBuffer)
+              }
+            } else {
+              // Fallback for browser: download multiple files
+              for (let i = 0; i < urls.length; i++) {
+                const batchConfig = { ...config, url: urls[i] }
+                let blob: Blob | null | undefined = null
+                let fileExtension = format
+                
+                if (format === 'svg') {
+                  blob = await exportQrAsBlob(batchConfig, 'svg')
+                } else if (format === 'png') {
+                  blob = await exportQrAsBlob(batchConfig, 'png')
+                } else if (format === 'pdf') {
+                  const pngBlob = await exportQrAsBlob(batchConfig, 'png')
+                  if (pngBlob) {
+                    const arrayBuffer = await pngBlob.arrayBuffer()
+                    const pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))
+                    blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
+                  }
+                }
+                
+                if (blob) {
+                  const naming = options?.batchNaming || 'qr_{index}'
+                  downloadBlob(blob, `${naming.replace('{index}', String(i + 1))}.${fileExtension}`)
+                }
               }
             }
           }
@@ -153,13 +144,14 @@ export function useExport() {
             blob = await exportQrAsBlob(config, 'png')
             if (blob && options?.templateBytes && options.templateMimeType && options.templateMimeType !== 'application/pdf') {
               const arrayBuffer = await blob.arrayBuffer()
+              const opt = options.templateOptionsArray?.[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
               const imgBytes = await addQrToImage(
                 options.templateBytes,
                 new Uint8Array(arrayBuffer),
                 {
-                  x: options.x,
-                  y: options.y,
-                  size: options.size
+                  x: opt.x,
+                  y: opt.y,
+                  size: opt.size
                 },
                 options.templateMimeType
               )
@@ -176,15 +168,11 @@ export function useExport() {
               let pdfBytes: Uint8Array
               
               if (options?.templateBytes && options.templateMimeType === 'application/pdf') {
+                const opt = options.templateOptionsArray?.[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
                 pdfBytes = await addQrToPdf(
                   options.templateBytes,
                   new Uint8Array(arrayBuffer),
-                  {
-                    pageIndex: options.pageIndex,
-                    x: options.x,
-                    y: options.y,
-                    size: options.size
-                  }
+                  opt
                 )
               } else {
                 pdfBytes = await createPdfWithQr(new Uint8Array(arrayBuffer))

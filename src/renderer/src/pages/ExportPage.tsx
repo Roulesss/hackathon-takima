@@ -17,7 +17,7 @@ interface ExportPageProps {
   activityType?: ActivityType
   templateBytes: Uint8Array | null
   templateMimeType?: string
-  templateOptions: { x: number; y: number; size: number; pageIndex: number }
+  templateOptions: { x: number; y: number; size: number; pageIndex: number }[]
 }
 
 const FORMAT_OPTIONS: Array<{
@@ -61,29 +61,42 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
     const updatePreview = async () => {
       if (templateBytes && templateMimeType && ((selectedFormat === 'pdf' && templateMimeType === 'application/pdf') || (selectedFormat === 'png' && templateMimeType.startsWith('image/')))) {
         try {
-          const pngBlob = await exportQrAsBlob(qrConfig, 'png')
-          if (!pngBlob) return
-          const arrayBuffer = await pngBlob.arrayBuffer()
+          const urls = qrConfig.batchUrls && qrConfig.batchUrls.length > 0 ? qrConfig.batchUrls : [qrConfig.url]
           
           if (templateMimeType === 'application/pdf') {
-            const pdfBytes = await addQrToPdf(
-              templateBytes,
-              new Uint8Array(arrayBuffer),
-              templateOptions
-            )
+            let currentPdfBytes = templateBytes
+            for (let i = 0; i < urls.length; i++) {
+              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
+              if (!pngBlob) continue
+              const arrayBuffer = await pngBlob.arrayBuffer()
+              const opt = templateOptions[i] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+              currentPdfBytes = await addQrToPdf(
+                currentPdfBytes,
+                new Uint8Array(arrayBuffer),
+                opt
+              )
+            }
             if (!active) return
-            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
+            const blob = new Blob([currentPdfBytes as any], { type: 'application/pdf' })
             const url = URL.createObjectURL(blob)
-            setPdfPreviewUrl(`${url}#page=${templateOptions.pageIndex + 1}`)
+            const firstOpt = templateOptions[0] || { pageIndex: 0 }
+            setPdfPreviewUrl(`${url}#page=${firstOpt.pageIndex + 1}`)
           } else {
-            const imgBytes = await addQrToImage(
-              templateBytes,
-              new Uint8Array(arrayBuffer),
-              templateOptions,
-              templateMimeType
-            )
+            let currentImgBytes = templateBytes
+            for (let i = 0; i < urls.length; i++) {
+              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
+              if (!pngBlob) continue
+              const arrayBuffer = await pngBlob.arrayBuffer()
+              const opt = templateOptions[i] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+              currentImgBytes = await addQrToImage(
+                currentImgBytes,
+                new Uint8Array(arrayBuffer),
+                opt,
+                templateMimeType
+              )
+            }
             if (!active) return
-            const blob = new Blob([imgBytes as any], { type: templateMimeType })
+            const blob = new Blob([currentImgBytes as any], { type: templateMimeType })
             const url = URL.createObjectURL(blob)
             setPdfPreviewUrl(url)
           }
@@ -155,11 +168,11 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
         templateBytes: templateBytes,
         templateMimeType: templateMimeType,
         batchNaming,
-        ...templateOptions
+        templateOptionsArray: templateOptions
       })
     } else {
       exportQr(qrConfig, selectedFormat, undefined, {
-        x: 0, y: 0, size: 0, pageIndex: 0, batchNaming
+        batchNaming
       })
     }
   }

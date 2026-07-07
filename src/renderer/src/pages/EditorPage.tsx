@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, Ale
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
-import { createQrInstance, checkContrast, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
+import { createQrInstance, checkContrast, exportQrAsBlob, exportQrAsDataUrl, addQrToPdf, addQrToImage } from '@renderer/utils'
 import { useBusinessCardConfig } from '@renderer/hooks'
 import { BusinessCardPreview } from '@renderer/components/business-card/BusinessCardPreview'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
@@ -19,8 +19,8 @@ interface EditorPageProps {
   setTemplateBytes: (bytes: Uint8Array | null) => void
   templateMimeType: string
   setTemplateMimeType: (mimeType: string) => void
-  templateOptions: { x: number; y: number; size: number; pageIndex: number }
-  setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }) => void
+  templateOptions: { x: number; y: number; size: number; pageIndex: number }[]
+  setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }[]) => void
   onSaveProject?: (project: ProjectConfig) => void
   businessCardConfig?: import('@renderer/types').BusinessCardConfig
   onBusinessCardConfigChange?: (config: import('@renderer/types').BusinessCardConfig) => void
@@ -36,9 +36,24 @@ const ACTIVITY_TABS = [
   { id: 'document', label: 'Document', icon: FileImage }
 ]
 
+const QrThumbnail = ({ config, url }: { config: QrConfig, url: string }) => {
+  const [dataUrl, setDataUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let active = true
+    exportQrAsDataUrl({ ...config, url, size: 200 }).then(res => {
+      if (active) setDataUrl(res)
+    }).catch(console.error)
+    return () => { active = false }
+  }, [config, url])
+  return (
+    <div style={{ width: 40, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, backgroundColor: config.style.colors.background }}>
+      {dataUrl && <img src={dataUrl} alt="QR Thumbnail" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+    </div>
+  )
+}
+
 export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const {
-
   onNavigate,
   initialActivity = 'qr-code',
   qrConfig,
@@ -73,6 +88,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
       props.onBusinessCardConfigChange(updatedConfig)
     }
   }
+  const [lastModifiedIndex, setLastModifiedIndex] = useState<number>(0)
+  const [templateDimensions, setTemplateDimensions] = useState<{width: number, height: number}>({ width: 600, height: 850 })
   const qrRef = useRef<HTMLDivElement>(null)
 
   const handleTabChange = (tabId: string) => {
@@ -81,11 +98,59 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   }
 
   useEffect(() => {
+    // Longer debounce for PDF to prevent continuous iframe reloading and zoom resets while dragging
+    const delay = templateMimeType === 'application/pdf' ? 500 : 50
     const timer = setTimeout(() => {
       setDebouncedTemplateOptions(templateOptions)
-    }, 50)
+    }, delay)
     return () => clearTimeout(timer)
-  }, [templateOptions])
+  }, [templateOptions, templateMimeType])
+
+  useEffect(() => {
+    if (!templateBytes) return
+    let active = true
+    const updateDims = async () => {
+      if (templateMimeType === 'application/pdf') {
+        try {
+          const { PDFDocument } = await import('pdf-lib')
+          const pdfDoc = await PDFDocument.load(templateBytes)
+          const pages = pdfDoc.getPages()
+          if (pages.length > 0 && active) {
+            const { width, height } = pages[0].getSize()
+            setTemplateDimensions({ width: Math.round(width), height: Math.round(height) })
+          }
+        } catch (e) {
+          console.error(e)
+        }
+      } else {
+        const blob = new Blob([templateBytes as any], { type: templateMimeType })
+        const url = URL.createObjectURL(blob)
+        const img = new Image()
+        img.onload = () => {
+          if (active) setTemplateDimensions({ width: img.width, height: img.height })
+          URL.revokeObjectURL(url)
+        }
+        img.src = url
+      }
+    }
+    updateDims()
+    return () => { active = false }
+  }, [templateBytes, templateMimeType])
+
+  useEffect(() => {
+    const needed = Math.max(1, batchUrls.length)
+    if (templateOptions.length !== needed) {
+      const newOptions = [...templateOptions]
+      const defaultOpt = templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+      while (newOptions.length < needed) {
+        newOptions.push({ ...defaultOpt })
+      }
+      if (newOptions.length > needed) {
+        newOptions.length = needed
+      }
+      setTemplateOptions(newOptions)
+    }
+  }, [batchUrls, templateOptions, setTemplateOptions])
 
   const contrast = checkContrast(
     qrConfig.style.colors.foreground,
@@ -109,30 +174,42 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     const updatePreview = async () => {
       if (activeTab === 'document' && templateBytes) {
         try {
-          const previewUrl = batchUrls.length > 0 ? batchUrls[0] : qrConfig.url
-          const pngBlob = await exportQrAsBlob({ ...qrConfig, url: previewUrl }, 'png')
-          if (!pngBlob) return
-          const arrayBuffer = await pngBlob.arrayBuffer()
+          const urls = batchUrls.length > 0 ? batchUrls : [qrConfig.url]
           
           if (templateMimeType === 'application/pdf') {
-            const pdfBytes = await addQrToPdf(
-              templateBytes,
-              new Uint8Array(arrayBuffer),
-              debouncedTemplateOptions
-            )
+            let currentPdfBytes = templateBytes
+            for (let i = 0; i < urls.length; i++) {
+              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
+              if (!pngBlob) continue
+              const arrayBuffer = await pngBlob.arrayBuffer()
+              const opt = debouncedTemplateOptions[i] || debouncedTemplateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+              currentPdfBytes = await addQrToPdf(
+                currentPdfBytes,
+                new Uint8Array(arrayBuffer),
+                opt
+              )
+            }
             if (!active) return
-            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
+            const blob = new Blob([currentPdfBytes as any], { type: 'application/pdf' })
             const url = URL.createObjectURL(blob)
-            setPdfPreviewUrl(`${url}#page=${debouncedTemplateOptions.pageIndex + 1}`)
+            const optToFocus = debouncedTemplateOptions[lastModifiedIndex] || debouncedTemplateOptions[0] || { pageIndex: 0 }
+            setPdfPreviewUrl(`${url}#page=${optToFocus.pageIndex + 1}`)
           } else {
-            const imgBytes = await addQrToImage(
-              templateBytes,
-              new Uint8Array(arrayBuffer),
-              debouncedTemplateOptions,
-              templateMimeType
-            )
+            let currentImgBytes = templateBytes
+            for (let i = 0; i < urls.length; i++) {
+              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
+              if (!pngBlob) continue
+              const arrayBuffer = await pngBlob.arrayBuffer()
+              const opt = debouncedTemplateOptions[i] || debouncedTemplateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+              currentImgBytes = await addQrToImage(
+                currentImgBytes,
+                new Uint8Array(arrayBuffer),
+                opt,
+                templateMimeType
+              )
+            }
             if (!active) return
-            const blob = new Blob([imgBytes as any], { type: templateMimeType })
+            const blob = new Blob([currentImgBytes as any], { type: templateMimeType })
             const url = URL.createObjectURL(blob)
             setPdfPreviewUrl(url)
           }
@@ -845,119 +922,143 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                 </div>
               </div>
 
-              <div className="editor-document__card">
-                <div className="editor-document__card-header">
-                  <MoveHorizontal size={18} className="editor-document__card-icon" />
-                  Positionnement & Taille
-                </div>
-
-                <div className="editor-document__presets">
-                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(20 + templateOptions.size / 2), y: Math.round(20 + templateOptions.size / 2) })}>
-                    Haut Gauche
-                  </button>
-                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(600 - 20 - templateOptions.size / 2), y: Math.round(20 + templateOptions.size / 2) })}>
-                    Haut Droit
-                  </button>
-                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: 300, y: 425 })}>
-                    Milieu
-                  </button>
-                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(20 + templateOptions.size / 2), y: Math.round(850 - 20 - templateOptions.size / 2) })}>
-                    Bas Gauche
-                  </button>
-                  <button className="editor-document__preset-btn" onClick={() => setTemplateOptions({ ...templateOptions, x: Math.round(600 - 20 - templateOptions.size / 2), y: Math.round(850 - 20 - templateOptions.size / 2) })}>
-                    Bas Droit
-                  </button>
-                </div>
+              {Array.from({ length: Math.max(1, batchUrls.length) }).map((_, idx) => {
+                const urlLabel = batchUrls.length > 0 ? `QR Code n°${idx + 1} (${batchUrls[idx]})` : 'QR Code'
+                const opt = templateOptions[idx] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
                 
-                <div className="editor-document__slider-row">
-                  <div className="editor-document__slider-label">
-                    <MoveHorizontal size={14} className="editor-document__card-icon" /> X
-                  </div>
-                  <input
-                    type="range"
-                    className="editor-config__slider"
-                    min="0"
-                    max="600"
-                    step="1"
-                    value={templateOptions.x}
-                    onChange={(e) => setTemplateOptions({ ...templateOptions, x: parseInt(e.target.value) || 0 })}
-                  />
-                  <input
-                    type="number"
-                    className="editor-config__input"
-                    value={templateOptions.x}
-                    onChange={(e) => setTemplateOptions({ ...templateOptions, x: parseInt(e.target.value) || 0 })}
-                    style={{ width: '70px', margin: 0, padding: '4px 8px' }}
-                  />
-                </div>
+                const updateOpt = (updates: Partial<typeof opt>) => {
+                  const newOptions = [...templateOptions]
+                  newOptions[idx] = { ...opt, ...updates }
+                  setTemplateOptions(newOptions)
+                  setLastModifiedIndex(idx)
+                }
 
-                <div className="editor-document__slider-row">
-                  <div className="editor-document__slider-label">
-                    <MoveVertical size={14} className="editor-document__card-icon" /> Y
-                  </div>
-                  <input
-                    type="range"
-                    className="editor-config__slider"
-                    min="0"
-                    max="850"
-                    step="1"
-                    value={templateOptions.y}
-                    onChange={(e) => setTemplateOptions({ ...templateOptions, y: parseInt(e.target.value) || 0 })}
-                  />
-                  <input
-                    type="number"
-                    className="editor-config__input"
-                    value={templateOptions.y}
-                    onChange={(e) => setTemplateOptions({ ...templateOptions, y: parseInt(e.target.value) || 0 })}
-                    style={{ width: '70px', margin: 0, padding: '4px 8px' }}
-                  />
-                </div>
+                return (
+                  <div key={idx} style={{ marginBottom: idx < Math.max(1, batchUrls.length) - 1 ? '32px' : '0' }}>
+                    <h3 className="editor-config__label" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <QrThumbnail config={qrConfig} url={batchUrls.length > 0 ? batchUrls[idx] : qrConfig.url} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.8em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)' }}>Réglages pour</span>
+                        <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'none', marginTop: '2px' }}>{urlLabel}</span>
+                      </div>
+                    </h3>
 
-                <div className="editor-document__slider-row">
-                  <div className="editor-document__slider-label">
-                    <Maximize size={14} className="editor-document__card-icon" /> Taille
-                  </div>
-                  <input
-                    type="range"
-                    className="editor-config__slider"
-                    min="10"
-                    max="600"
-                    step="1"
-                    value={templateOptions.size}
-                    onChange={(e) => setTemplateOptions({ ...templateOptions, size: parseInt(e.target.value) || 0 })}
-                  />
-                  <input
-                    type="number"
-                    className="editor-config__input"
-                    value={templateOptions.size}
-                    onChange={(e) => setTemplateOptions({ ...templateOptions, size: parseInt(e.target.value) || 0 })}
-                    style={{ width: '70px', margin: 0, padding: '4px 8px' }}
-                  />
-                </div>
-              </div>
+                    <div className="editor-document__card">
+                      <div className="editor-document__card-header">
+                        <MoveHorizontal size={18} className="editor-document__card-icon" />
+                        Positionnement & Taille
+                      </div>
 
-              {templateMimeType === 'application/pdf' && (
-                <div className="editor-document__card">
-                  <div className="editor-document__card-header">
-                    <FileText size={18} className="editor-document__card-icon" />
-                    Options PDF
+                      <div className="editor-document__presets">
+                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(20 + opt.size / 2), y: Math.round(20 + opt.size / 2) })}>
+                          Haut Gauche
+                        </button>
+                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width - 20 - opt.size / 2), y: Math.round(20 + opt.size / 2) })}>
+                          Haut Droit
+                        </button>
+                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width / 2), y: Math.round(templateDimensions.height / 2) })}>
+                          Milieu
+                        </button>
+                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(20 + opt.size / 2), y: Math.round(templateDimensions.height - 20 - opt.size / 2) })}>
+                          Bas Gauche
+                        </button>
+                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width - 20 - opt.size / 2), y: Math.round(templateDimensions.height - 20 - opt.size / 2) })}>
+                          Bas Droit
+                        </button>
+                      </div>
+                      
+                      <div className="editor-document__slider-row">
+                        <div className="editor-document__slider-label">
+                          <MoveHorizontal size={14} className="editor-document__card-icon" /> X
+                        </div>
+                        <input
+                          type="range"
+                          className="editor-config__slider"
+                          min="0"
+                          max={templateDimensions.width}
+                          step="1"
+                          value={opt.x}
+                          onChange={(e) => updateOpt({ x: parseInt(e.target.value) || 0 })}
+                        />
+                        <input
+                          type="number"
+                          className="editor-config__input"
+                          value={opt.x}
+                          onChange={(e) => updateOpt({ x: parseInt(e.target.value) || 0 })}
+                          style={{ width: '70px', margin: 0, padding: '4px 8px' }}
+                        />
+                      </div>
+
+                      <div className="editor-document__slider-row">
+                        <div className="editor-document__slider-label">
+                          <MoveVertical size={14} className="editor-document__card-icon" /> Y
+                        </div>
+                        <input
+                          type="range"
+                          className="editor-config__slider"
+                          min="0"
+                          max={templateDimensions.height}
+                          step="1"
+                          value={opt.y}
+                          onChange={(e) => updateOpt({ y: parseInt(e.target.value) || 0 })}
+                        />
+                        <input
+                          type="number"
+                          className="editor-config__input"
+                          value={opt.y}
+                          onChange={(e) => updateOpt({ y: parseInt(e.target.value) || 0 })}
+                          style={{ width: '70px', margin: 0, padding: '4px 8px' }}
+                        />
+                      </div>
+
+                      <div className="editor-document__slider-row">
+                        <div className="editor-document__slider-label">
+                          <Maximize size={14} className="editor-document__card-icon" /> Taille
+                        </div>
+                        <input
+                          type="range"
+                          className="editor-config__slider"
+                          min="10"
+                          max={Math.max(10, Math.round(Math.min(templateDimensions.width, templateDimensions.height)))}
+                          step="1"
+                          value={opt.size}
+                          onChange={(e) => updateOpt({ size: parseInt(e.target.value) || 0 })}
+                        />
+                        <input
+                          type="number"
+                          className="editor-config__input"
+                          value={opt.size}
+                          onChange={(e) => updateOpt({ size: parseInt(e.target.value) || 0 })}
+                          style={{ width: '70px', margin: 0, padding: '4px 8px' }}
+                        />
+                      </div>
+                    </div>
+
+                    {templateMimeType === 'application/pdf' && (
+                      <div className="editor-document__card" style={{ marginTop: '16px' }}>
+                        <div className="editor-document__card-header">
+                          <FileText size={18} className="editor-document__card-icon" />
+                          Options PDF
+                        </div>
+                        <div className="editor-document__slider-row">
+                          <div className="editor-document__slider-label">Numéro de page</div>
+                          <input
+                            type="number"
+                            className="editor-config__input"
+                            value={opt.pageIndex + 1}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value)
+                              updateOpt({ pageIndex: isNaN(val) ? 0 : Math.max(0, val - 1) })
+                            }}
+                            min="1"
+                            style={{ flex: 1, margin: 0 }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="editor-document__slider-row">
-                    <div className="editor-document__slider-label">Numéro de page</div>
-                    <input
-                      type="number"
-                      className="editor-config__input"
-                      value={templateOptions.pageIndex + 1}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value)
-                        setTemplateOptions({ ...templateOptions, pageIndex: isNaN(val) ? 0 : Math.max(0, val - 1) })
-                      }}
-                      min="1"
-                      style={{ flex: 1, margin: 0 }}
-                    />
-                  </div>
-                </div>
-              )}
+                )
+              })}
             </>
           )}
         </div>

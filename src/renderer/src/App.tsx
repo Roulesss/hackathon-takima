@@ -16,7 +16,7 @@ function App(): React.JSX.Element {
 
   const [templateBytes, setTemplateBytes] = useState<Uint8Array | null>(null)
   const [templateMimeType, setTemplateMimeType] = useState<string>('application/pdf')
-  const [templateOptions, setTemplateOptions] = useState({ x: 50, y: 50, size: 150, pageIndex: 0 })
+  const [templateOptions, setTemplateOptions] = useState([{ x: 50, y: 50, size: 150, pageIndex: 0 }])
 
   const navigate = (page: string, data?: Record<string, unknown>): void => {
     setCurrentPage(page as PageId)
