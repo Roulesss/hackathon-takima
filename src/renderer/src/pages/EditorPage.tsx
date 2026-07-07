@@ -4,6 +4,8 @@ import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
 import { createQrInstance, checkContrast, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
+import { useBusinessCardConfig } from '@renderer/hooks'
+import { BusinessCardPreview } from '@renderer/components/business-card/BusinessCardPreview'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
 import { DEFAULT_QR_CONFIG } from '@renderer/types/qr'
 import './EditorPage.css'
@@ -20,6 +22,7 @@ interface EditorPageProps {
   templateOptions: { x: number; y: number; size: number; pageIndex: number }
   setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }) => void
   onSaveProject?: (project: ProjectConfig) => void
+  businessCardConfig?: import('@renderer/types').BusinessCardConfig
 }
 
 const DOT_STYLES: DotStyle[] = ['square', 'dots', 'rounded', 'extra-rounded', 'classy', 'classy-rounded']
@@ -32,7 +35,9 @@ const ACTIVITY_TABS = [
   { id: 'document', label: 'Document', icon: FileImage }
 ]
 
-export function EditorPage({
+export function EditorPage(props: EditorPageProps): React.JSX.Element {
+  const {
+
   onNavigate,
   initialActivity = 'qr-code',
   qrConfig,
@@ -44,7 +49,7 @@ export function EditorPage({
   templateOptions,
   setTemplateOptions,
   onSaveProject
-}: EditorPageProps): React.JSX.Element {
+  } = props
   const [activeTab, setActiveTab] = useState<string>(initialActivity)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [useCustomCornerColor, setUseCustomCornerColor] = useState(false)
@@ -52,6 +57,13 @@ export function EditorPage({
   const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
+  const { config: bcConfig, setConfig: setBcConfig } = useBusinessCardConfig()
+
+  useEffect(() => {
+    if (props.businessCardConfig) {
+      setBcConfig(props.businessCardConfig)
+    }
+  }, [props.businessCardConfig, setBcConfig])
   const qrRef = useRef<HTMLDivElement>(null)
 
   const handleTabChange = (tabId: string) => {
@@ -190,7 +202,13 @@ export function EditorPage({
 
   const previewPanel = (
     <div className="editor-preview">
-      {activeTab === 'document' && pdfPreviewUrl ? (
+      {activeTab === 'business-card' ? (
+        <BusinessCardPreview 
+          config={bcConfig} 
+          qrConfig={qrConfig} 
+          previewUrl={batchUrls.length > 0 ? batchUrls[0] : qrConfig.url} 
+        />
+      ) : activeTab === 'document' && pdfPreviewUrl ? (
         <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
           <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="PDF Preview">
             <p>Impossible d'afficher le PDF</p>
@@ -440,6 +458,141 @@ export function EditorPage({
             </div>
           </div>
         </>
+      ) : activeTab === 'business-card' ? (
+        <>
+          <div className="editor-config__section">
+            <label className="editor-config__label">Type de carte</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <Button
+                variant={bcConfig.type === 'person' ? 'primary' : 'secondary'}
+                onClick={() => setBcConfig({ ...bcConfig, type: 'person' })}
+                style={{ flex: 1 }}
+              >
+                Personne
+              </Button>
+              <Button
+                variant={bcConfig.type === 'company' ? 'primary' : 'secondary'}
+                onClick={() => setBcConfig({ ...bcConfig, type: 'company' })}
+                style={{ flex: 1 }}
+              >
+                Entreprise
+              </Button>
+            </div>
+          </div>
+          
+          <div className="editor-config__section">
+            <label className="editor-config__label">{bcConfig.type === 'company' ? "Nom de l'entreprise" : "Nom et Prénom"}</label>
+            <input
+              type="text"
+              className="editor-config__input"
+              value={bcConfig.name}
+              onChange={(e) => setBcConfig({ ...bcConfig, name: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">{bcConfig.type === 'company' ? "Domaine d'activité" : "Profession"}</label>
+            <input
+              type="text"
+              className="editor-config__input"
+              value={bcConfig.professionOrDomain}
+              onChange={(e) => setBcConfig({ ...bcConfig, professionOrDomain: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Lieu / Adresse</label>
+            <input
+              type="text"
+              className="editor-config__input"
+              value={bcConfig.location}
+              onChange={(e) => setBcConfig({ ...bcConfig, location: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Téléphone</label>
+            <input
+              type="tel"
+              className="editor-config__input"
+              value={bcConfig.phone}
+              onChange={(e) => setBcConfig({ ...bcConfig, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="editor-config__divider" />
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Couleurs de la carte</label>
+            <div className="editor-config__color-group">
+              <div className="editor-config__color-row">
+                <span className="editor-config__color-label">Arrière-plan</span>
+                <input
+                  type="color"
+                  className="editor-config__color-input"
+                  value={bcConfig.backgroundColor}
+                  onChange={(e) => setBcConfig({ ...bcConfig, backgroundColor: e.target.value })}
+                />
+              </div>
+              <div className="editor-config__color-row">
+                <span className="editor-config__color-label">Texte</span>
+                <input
+                  type="color"
+                  className="editor-config__color-input"
+                  value={bcConfig.textColor}
+                  onChange={(e) => setBcConfig({ ...bcConfig, textColor: e.target.value })}
+                />
+              </div>
+              <div className="editor-config__color-row">
+                <span className="editor-config__color-label">Accent</span>
+                <input
+                  type="color"
+                  className="editor-config__color-input"
+                  value={bcConfig.accentColor}
+                  onChange={(e) => setBcConfig({ ...bcConfig, accentColor: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="editor-config__divider" />
+
+          <div className="editor-config__section">
+            <label className="editor-config__label">Style</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <span style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Police (Google Fonts / Native)</span>
+                <input
+                  type="text"
+                  className="editor-config__input"
+                  value={bcConfig.fontFamily}
+                  onChange={(e) => setBcConfig({ ...bcConfig, fontFamily: e.target.value })}
+                />
+              </div>
+              
+              <label className="editor-config__checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={bcConfig.showBorder}
+                  onChange={(e) => setBcConfig({ ...bcConfig, showBorder: e.target.checked })}
+                />
+                <span className="editor-config__color-label">Afficher une bordure</span>
+              </label>
+              
+              {bcConfig.showBorder && (
+                <div className="editor-config__color-row">
+                  <span className="editor-config__color-label">Couleur de bordure</span>
+                  <input
+                    type="color"
+                    className="editor-config__color-input"
+                    value={bcConfig.borderColor}
+                    onChange={(e) => setBcConfig({ ...bcConfig, borderColor: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       ) : activeTab === 'document' ? (
         <div className="editor-config__section">
           <h2 className="editor-config__title" style={{ marginBottom: '1rem' }}>Intégration Document / Image</h2>
@@ -588,6 +741,7 @@ export function EditorPage({
                           updatedAt: new Date().toISOString(),
                           activityType: activeTab as ActivityType,
                           qrConfig,
+                          businessCardConfig: bcConfig,
                           filePath
                         })
                       }

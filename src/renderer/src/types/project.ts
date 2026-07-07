@@ -9,6 +9,7 @@ export interface ProjectConfig {
   updatedAt: string
   activityType: ActivityType
   qrConfig: QrConfig
+  businessCardConfig?: import('./businessCard').BusinessCardConfig
   thumbnail?: string
   filePath?: string
 }

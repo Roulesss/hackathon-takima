@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { HomePage, ActivityChoicePage, EditorPage, ScannerPage, ExportPage } from './pages'
-import { useQrConfig } from './hooks'
-import { useProjects } from './hooks'
+import { useQrConfig, useProjects, useBusinessCardConfig } from './hooks'
 import type { ActivityType } from './types'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './styles/global.css'
@@ -11,7 +10,8 @@ export type PageId = 'home' | 'activity-choice' | 'editor' | 'scanner' | 'export
 function App(): React.JSX.Element {
   const [currentPage, setCurrentPage] = useState<PageId>('home')
   const [currentActivity, setCurrentActivity] = useState<ActivityType>('qr-code')
-  const { config: qrConfig, setConfig: setQrConfig, resetConfig } = useQrConfig()
+  const { config: qrConfig, setConfig: setQrConfig, resetConfig: resetQrConfig } = useQrConfig()
+  const { config: bcConfig, setConfig: setBcConfig, resetConfig: resetBcConfig } = useBusinessCardConfig()
   const { projects, deleteProject, addProject } = useProjects()
 
   const [templateBytes, setTemplateBytes] = useState<Uint8Array | null>(null)
@@ -29,9 +29,11 @@ function App(): React.JSX.Element {
       const project = projects.find(p => p.id === data.projectId)
       if (project) {
         setQrConfig(project.qrConfig)
+        if (project.businessCardConfig) setBcConfig(project.businessCardConfig)
       }
     } else if (page === 'editor' && currentPage === 'activity-choice' && !data?.config && !data?.projectId) {
-      resetConfig()
+      resetQrConfig()
+      resetBcConfig()
     }
   }
 
@@ -54,6 +56,7 @@ function App(): React.JSX.Element {
             initialActivity={currentActivity}
             qrConfig={qrConfig}
             onConfigChange={setQrConfig}
+            businessCardConfig={bcConfig}
             templateBytes={templateBytes}
             setTemplateBytes={setTemplateBytes}
             templateMimeType={templateMimeType}
@@ -71,6 +74,8 @@ function App(): React.JSX.Element {
           <ExportPage
             onNavigate={navigate}
             qrConfig={qrConfig}
+            businessCardConfig={bcConfig}
+            activityType={currentActivity}
             templateBytes={templateBytes}
             templateMimeType={templateMimeType}
             templateOptions={templateOptions}
