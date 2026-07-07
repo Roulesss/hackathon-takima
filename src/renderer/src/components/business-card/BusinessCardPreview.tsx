@@ -42,7 +42,7 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
       const cardQrConfig = {
         ...qrConfig,
         url: previewUrl,
-        size: 130, // Slightly smaller to prevent overflow in the 150px wrapper padding
+        size: config.qrSize || 130,
         margin: 0
       }
       const qr = createQrInstance(cardQrConfig)
@@ -74,7 +74,11 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
                   src={config.iconUrl} 
                   alt="Icon/Logo" 
                   className="business-card__icon" 
-                  style={{ width: `${config.iconSize}px`, height: `${config.iconSize}px` }} 
+                  style={{ 
+                    width: `${config.iconSize}px`, 
+                    height: `${config.iconSize}px`,
+                    borderRadius: config.iconStyle === 'square' ? '8px' : '50%'
+                  }} 
                 />
               )}
               <h1 className="business-card__name" style={{ color: config.accentColor, fontFamily: config.nameFontFamily || 'Inter', fontSize: `${config.nameFontSize || 42}px` }}>
@@ -100,7 +104,7 @@ export const BusinessCardPreview = React.forwardRef<HTMLDivElement, BusinessCard
             </div>
           </div>
           
-          <div className="business-card__qr-wrapper">
+          <div className="business-card__qr-wrapper" style={{ width: `${(config.qrSize || 130) + 20}px`, height: `${(config.qrSize || 130) + 20}px` }}>
             <div ref={qrRef} className="business-card__qr" />
           </div>
         </div>

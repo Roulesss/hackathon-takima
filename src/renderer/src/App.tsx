@@ -57,6 +57,7 @@ function App(): React.JSX.Element {
             qrConfig={qrConfig}
             onConfigChange={setQrConfig}
             businessCardConfig={bcConfig}
+            onBusinessCardConfigChange={setBcConfig}
             templateBytes={templateBytes}
             setTemplateBytes={setTemplateBytes}
             templateMimeType={templateMimeType}

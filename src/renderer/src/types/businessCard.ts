@@ -28,6 +28,10 @@ export interface BusinessCardConfig {
   // Icon/Logo
   iconUrl?: string
   iconSize: number
+  iconStyle?: 'circle' | 'square'
+  
+  // QR Code
+  qrSize?: number
 }
 
 export const DEFAULT_BUSINESS_CARD_CONFIG: BusinessCardConfig = {

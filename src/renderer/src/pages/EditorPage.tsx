@@ -23,6 +23,7 @@ interface EditorPageProps {
   setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }) => void
   onSaveProject?: (project: ProjectConfig) => void
   businessCardConfig?: import('@renderer/types').BusinessCardConfig
+  onBusinessCardConfigChange?: (config: import('@renderer/types').BusinessCardConfig) => void
 }
 
 const DOT_STYLES: DotStyle[] = ['square', 'dots', 'rounded', 'extra-rounded', 'classy', 'classy-rounded']
@@ -57,13 +58,20 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
-  const { config: bcConfig, setConfig: setBcConfig } = useBusinessCardConfig()
-
-  useEffect(() => {
-    if (props.businessCardConfig) {
-      setBcConfig(props.businessCardConfig)
+  const { config: bcConfigLocal, setConfig: setBcConfigLocal } = useBusinessCardConfig()
+  const bcConfig = props.businessCardConfig || bcConfigLocal
+  const setBcConfig = (newConfig: import('@renderer/types').BusinessCardConfig | ((prev: import('@renderer/types').BusinessCardConfig) => import('@renderer/types').BusinessCardConfig)) => {
+    let updatedConfig: import('@renderer/types').BusinessCardConfig;
+    if (typeof newConfig === 'function') {
+      updatedConfig = newConfig(bcConfig);
+    } else {
+      updatedConfig = newConfig;
     }
-  }, [props.businessCardConfig, setBcConfig])
+    setBcConfigLocal(updatedConfig)
+    if (props.onBusinessCardConfigChange) {
+      props.onBusinessCardConfigChange(updatedConfig)
+    }
+  }
   const qrRef = useRef<HTMLDivElement>(null)
 
   const handleTabChange = (tabId: string) => {
@@ -487,27 +495,18 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
       ) : activeTab === 'business-card' ? (
         <>
           <div className="editor-config__section">
-            <label className="editor-config__label">Type de carte</label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <Button
-                variant={bcConfig.type === 'person' ? 'primary' : 'secondary'}
-                onClick={() => setBcConfig({ ...bcConfig, type: 'person' })}
-                style={{ flex: 1 }}
-              >
-                Personne
-              </Button>
-              <Button
-                variant={bcConfig.type === 'company' ? 'primary' : 'secondary'}
-                onClick={() => setBcConfig({ ...bcConfig, type: 'company' })}
-                style={{ flex: 1 }}
-              >
-                Entreprise
-              </Button>
-            </div>
+            <label className="editor-config__label">Taille du QR Code (Miniature)</label>
+            <input
+              type="range"
+              className="editor-config__slider"
+              min={80} max={250} step={5}
+              value={bcConfig.qrSize || 130}
+              onChange={(e) => setBcConfig({ ...bcConfig, qrSize: Number(e.target.value) })}
+            />
           </div>
-          
+
           <div className="editor-config__section">
-            <label className="editor-config__label">{bcConfig.type === 'company' ? "Nom de l'entreprise" : "Nom et Prénom"}</label>
+            <label className="editor-config__label">Nom et Prénom / Entreprise</label>
             <input
               type="text"
               className="editor-config__input"
@@ -517,7 +516,7 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
           </div>
 
           <div className="editor-config__section">
-            <label className="editor-config__label">{bcConfig.type === 'company' ? "Domaine d'activité" : "Profession"}</label>
+            <label className="editor-config__label">"Profession / Domaine"</label>
             <input
               type="text"
               className="editor-config__input"
@@ -570,6 +569,23 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                   value={bcConfig.iconSize || 80}
                   onChange={(e) => setBcConfig({ ...bcConfig, iconSize: Number(e.target.value) })}
                 />
+                <span style={{ fontSize: '12px', marginTop: '12px', marginBottom: '4px', display: 'block' }}>Style de l'image</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button
+                    variant={bcConfig.iconStyle === 'square' ? 'primary' : 'secondary'}
+                    onClick={() => setBcConfig({ ...bcConfig, iconStyle: 'square' })}
+                    style={{ flex: 1, padding: '4px' }}
+                  >
+                    Carré
+                  </Button>
+                  <Button
+                    variant={bcConfig.iconStyle === 'circle' ? 'primary' : 'secondary'}
+                    onClick={() => setBcConfig({ ...bcConfig, iconStyle: 'circle' })}
+                    style={{ flex: 1, padding: '4px' }}
+                  >
+                    Cercle
+                  </Button>
+                </div>
               </div>
             )}
           </div>
