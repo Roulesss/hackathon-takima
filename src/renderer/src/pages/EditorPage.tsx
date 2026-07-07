@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check } from 'lucide-react'
+import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2 } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
-import { Button, IconButton, Tabs, Modal } from '@renderer/components/common'
+import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
 import { createQrInstance, checkContrast, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
-import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType } from '@renderer/types'
+import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
+import { DEFAULT_QR_CONFIG } from '@renderer/types/qr'
 import './EditorPage.css'
 
 interface EditorPageProps {
@@ -18,6 +19,7 @@ interface EditorPageProps {
   setTemplateMimeType: (mimeType: string) => void
   templateOptions: { x: number; y: number; size: number; pageIndex: number }
   setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }) => void
+  onSaveProject?: (project: ProjectConfig) => void
 }
 
 const DOT_STYLES: DotStyle[] = ['square', 'dots', 'rounded', 'extra-rounded', 'classy', 'classy-rounded']
@@ -40,15 +42,22 @@ export function EditorPage({
   templateMimeType,
   setTemplateMimeType,
   templateOptions,
-  setTemplateOptions
+  setTemplateOptions,
+  onSaveProject
 }: EditorPageProps): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<string>(initialActivity)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [useCustomCornerColor, setUseCustomCornerColor] = useState(false)
   const [useCustomCornerDotColor, setUseCustomCornerDotColor] = useState(false)
+  const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
   const qrRef = useRef<HTMLDivElement>(null)
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+    onNavigate('editor', { activity: tabId })
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -65,20 +74,22 @@ export function EditorPage({
   const renderQr = useCallback(() => {
     if (!qrRef.current) return
     qrRef.current.innerHTML = ''
-    const qr = createQrInstance(qrConfig)
+    const previewUrl = batchUrls.length > 0 ? batchUrls[0] : qrConfig.url
+    const qr = createQrInstance({ ...qrConfig, url: previewUrl })
     qr.append(qrRef.current)
-  }, [qrConfig])
+  }, [qrConfig, batchUrls])
 
   useEffect(() => {
     renderQr()
-  }, [renderQr])
+  }, [renderQr, activeTab])
 
   useEffect(() => {
     let active = true
     const updatePreview = async () => {
       if (activeTab === 'document' && templateBytes) {
         try {
-          const pngBlob = await exportQrAsBlob(qrConfig, 'png')
+          const previewUrl = batchUrls.length > 0 ? batchUrls[0] : qrConfig.url
+          const pngBlob = await exportQrAsBlob({ ...qrConfig, url: previewUrl }, 'png')
           if (!pngBlob) return
           const arrayBuffer = await pngBlob.arrayBuffer()
           
@@ -115,7 +126,7 @@ export function EditorPage({
     return () => {
       active = false
     }
-  }, [activeTab, templateBytes, templateMimeType, debouncedTemplateOptions, qrConfig])
+  }, [activeTab, templateBytes, templateMimeType, debouncedTemplateOptions, qrConfig, batchUrls])
 
   const handleImportDocument = async () => {
     if (window.api && window.api.openFileDialog) {
@@ -143,7 +154,9 @@ export function EditorPage({
 
   const handleRawExport = async (): Promise<void> => {
     const { exportQrAsBlob } = await import('@renderer/utils/qrGenerator')
-    const blob = await exportQrAsBlob(qrConfig, 'png')
+    const previewUrl = batchUrls.length > 0 ? batchUrls[0] : qrConfig.url
+    const rawConfig = { ...DEFAULT_QR_CONFIG, url: previewUrl }
+    const blob = await exportQrAsBlob(rawConfig, 'png')
     if (blob) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -217,14 +230,75 @@ export function EditorPage({
       {activeTab === 'qr-code' ? (
         <>
           <div className="editor-config__section">
-            <label className="editor-config__label">URL / Lien</label>
-            <input
-              type="url"
-              className="editor-config__input editor-config__input--url"
-              value={qrConfig.url}
-              onChange={(e) => updateField('url', e.target.value)}
-              placeholder="https://example.com"
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label className="editor-config__label" style={{ marginBottom: 0 }}>URLs / Liens</label>
+            </div>
+            
+            {batchUrls.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {batchUrls.map((url, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '4px' }}>
+                    <input
+                      type="url"
+                      className="editor-config__input editor-config__input--url"
+                      value={url}
+                      onChange={(e) => {
+                        const newUrls = [...batchUrls]
+                        newUrls[idx] = e.target.value
+                        setBatchUrls(newUrls)
+                        updateField('batchUrls', newUrls)
+                      }}
+                      placeholder="https://example.com"
+                    />
+                    <IconButton 
+                      icon={Trash2} 
+                      onClick={() => {
+                        const newUrls = batchUrls.filter((_, i) => i !== idx)
+                        if (newUrls.length === 0) {
+                          updateField('batchUrls', undefined)
+                        } else {
+                          updateField('batchUrls', newUrls)
+                        }
+                        setBatchUrls(newUrls)
+                      }} 
+                    />
+                  </div>
+                ))}
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  icon={Plus} 
+                  onClick={() => {
+                    const newUrls = [...batchUrls, '']
+                    setBatchUrls(newUrls)
+                    updateField('batchUrls', newUrls)
+                  }}
+                >
+                  Ajouter une URL
+                </Button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <input
+                    type="url"
+                    className="editor-config__input editor-config__input--url"
+                    value={qrConfig.url}
+                    onChange={(e) => updateField('url', e.target.value)}
+                    placeholder="https://example.com"
+                  />
+                  <IconButton 
+                    icon={Plus} 
+                    tooltip="Passer en mode lot (batch)"
+                    onClick={() => {
+                      const newUrls = [qrConfig.url, '']
+                      setBatchUrls(newUrls)
+                      updateField('batchUrls', newUrls)
+                    }} 
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="editor-config__section">
@@ -480,7 +554,7 @@ export function EditorPage({
         left={
           <IconButton
             icon={ArrowLeft}
-            onClick={() => onNavigate('activity-choice')}
+            onClick={() => onNavigate('home')}
             tooltip="Retour"
           />
         }
@@ -488,7 +562,7 @@ export function EditorPage({
           <Tabs
             tabs={ACTIVITY_TABS}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           />
         }
         right={
@@ -506,6 +580,17 @@ export function EditorPage({
                     })
                     if (!canceled && filePath) {
                       await window.api.writeFile(filePath, dataToSave)
+                      if (onSaveProject) {
+                        onSaveProject({
+                          id: Date.now().toString(),
+                          name: filePath.split('/').pop() || 'projet-qr',
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                          activityType: activeTab as ActivityType,
+                          qrConfig,
+                          filePath
+                        })
+                      }
                     }
                   } else {
                     const blob = new Blob([dataToSave], { type: 'application/json' })
@@ -546,9 +631,7 @@ export function EditorPage({
         </Button>
       </div>
 
-      <Modal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} title="Paramètres du projet">
-        <p style={{ color: 'var(--color-text-secondary)' }}>Paramètres du projet à configurer ici.</p>
-      </Modal>
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

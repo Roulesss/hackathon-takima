@@ -12,7 +12,7 @@ function App(): React.JSX.Element {
   const [currentPage, setCurrentPage] = useState<PageId>('home')
   const [currentActivity, setCurrentActivity] = useState<ActivityType>('qr-code')
   const { config: qrConfig, setConfig: setQrConfig } = useQrConfig()
-  const { projects, deleteProject } = useProjects()
+  const { projects, deleteProject, addProject } = useProjects()
 
   const [templateBytes, setTemplateBytes] = useState<Uint8Array | null>(null)
   const [templateMimeType, setTemplateMimeType] = useState<string>('application/pdf')
@@ -58,6 +58,7 @@ function App(): React.JSX.Element {
             setTemplateMimeType={setTemplateMimeType}
             templateOptions={templateOptions}
             setTemplateOptions={setTemplateOptions}
+            onSaveProject={addProject}
           />
         )
       case 'scanner':
