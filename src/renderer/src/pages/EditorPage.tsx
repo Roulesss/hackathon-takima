@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, Ale
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, Modal } from '@renderer/components/common'
-import { createQrInstance, checkContrast } from '@renderer/utils'
+import { createQrInstance, checkContrast, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType } from '@renderer/types'
 import './EditorPage.css'
 
@@ -12,6 +12,12 @@ interface EditorPageProps {
   initialActivity?: ActivityType
   qrConfig: QrConfig
   onConfigChange: (config: QrConfig) => void
+  templateBytes: Uint8Array | null
+  setTemplateBytes: (bytes: Uint8Array | null) => void
+  templateMimeType: string
+  setTemplateMimeType: (mimeType: string) => void
+  templateOptions: { x: number; y: number; size: number; pageIndex: number }
+  setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }) => void
 }
 
 const DOT_STYLES: DotStyle[] = ['square', 'dots', 'rounded', 'extra-rounded', 'classy', 'classy-rounded']
@@ -28,13 +34,28 @@ export function EditorPage({
   onNavigate,
   initialActivity = 'qr-code',
   qrConfig,
-  onConfigChange
+  onConfigChange,
+  templateBytes,
+  setTemplateBytes,
+  templateMimeType,
+  setTemplateMimeType,
+  templateOptions,
+  setTemplateOptions
 }: EditorPageProps): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<string>(initialActivity)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [useCustomCornerColor, setUseCustomCornerColor] = useState(false)
   const [useCustomCornerDotColor, setUseCustomCornerDotColor] = useState(false)
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+  const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
   const qrRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTemplateOptions(templateOptions)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [templateOptions])
 
   const contrast = checkContrast(
     qrConfig.style.colors.foreground,
@@ -51,6 +72,74 @@ export function EditorPage({
   useEffect(() => {
     renderQr()
   }, [renderQr])
+
+  useEffect(() => {
+    let active = true
+    const updatePreview = async () => {
+      if (activeTab === 'document' && templateBytes) {
+        try {
+          const pngBlob = await exportQrAsBlob(qrConfig, 'png')
+          if (!pngBlob) return
+          const arrayBuffer = await pngBlob.arrayBuffer()
+          
+          if (templateMimeType === 'application/pdf') {
+            const pdfBytes = await addQrToPdf(
+              templateBytes,
+              new Uint8Array(arrayBuffer),
+              debouncedTemplateOptions
+            )
+            if (!active) return
+            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
+            const url = URL.createObjectURL(blob)
+            setPdfPreviewUrl(`${url}#page=${debouncedTemplateOptions.pageIndex + 1}`)
+          } else {
+            const imgBytes = await addQrToImage(
+              templateBytes,
+              new Uint8Array(arrayBuffer),
+              debouncedTemplateOptions,
+              templateMimeType
+            )
+            if (!active) return
+            const blob = new Blob([imgBytes as any], { type: templateMimeType })
+            const url = URL.createObjectURL(blob)
+            setPdfPreviewUrl(url)
+          }
+        } catch (e) {
+          console.error('Preview error', e)
+        }
+      } else {
+        setPdfPreviewUrl(null)
+      }
+    }
+    updatePreview()
+    return () => {
+      active = false
+    }
+  }, [activeTab, templateBytes, templateMimeType, debouncedTemplateOptions, qrConfig])
+
+  const handleImportDocument = async () => {
+    if (window.api && window.api.openFileDialog) {
+      const result = await window.api.openFileDialog({
+        filters: [{ name: 'Documents et Images', extensions: ['pdf', 'png', 'jpg', 'jpeg'] }],
+        properties: ['openFile']
+      })
+      if (!result.canceled && result.filePaths.length > 0) {
+        const filePath = result.filePaths[0]
+        const ext = filePath.split('.').pop()?.toLowerCase()
+        const mimeType = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : 'image/jpeg'
+        
+        const readResult = await window.api.readBinaryFile(filePath)
+        if (readResult.success && readResult.data) {
+          setTemplateBytes(new Uint8Array(readResult.data))
+          setTemplateMimeType(mimeType)
+        }
+      }
+    }
+  }
+
+  const handleClearTemplate = () => {
+    setTemplateBytes(null)
+  }
 
   const handleRawExport = async (): Promise<void> => {
     const { exportQrAsBlob } = await import('@renderer/utils/qrGenerator')
@@ -88,9 +177,17 @@ export function EditorPage({
 
   const previewPanel = (
     <div className="editor-preview">
-      <div className="editor-preview__qr-container">
-        <div ref={qrRef} className="editor-preview__qr" />
-      </div>
+      {activeTab === 'document' && pdfPreviewUrl ? (
+        <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="PDF Preview">
+            <p>Impossible d'afficher le PDF</p>
+          </iframe>
+        </div>
+      ) : (
+        <div className="editor-preview__qr-container">
+          <div ref={qrRef} className="editor-preview__qr" />
+        </div>
+      )}
 
       {!contrast.isReadable && (
         <div className="editor-preview__warning">
@@ -269,6 +366,103 @@ export function EditorPage({
             </div>
           </div>
         </>
+      ) : activeTab === 'document' ? (
+        <div className="editor-config__section">
+          <h2 className="editor-config__title" style={{ marginBottom: '1rem' }}>Intégration Document / Image</h2>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+            <Button onClick={handleImportDocument} variant="secondary" fullWidth style={{ flex: 1 }}>
+              {templateBytes ? 'Changer de fichier' : 'Importer un PDF ou une image'}
+            </Button>
+            {templateBytes && (
+              <Button onClick={handleClearTemplate} variant="secondary" style={{ padding: '0.5rem', minWidth: '40px' }}>
+                🗑️
+              </Button>
+            )}
+          </div>
+          
+          {templateBytes && (
+            <div className="editor-config__style-grid" style={{ gridTemplateColumns: '1fr', gap: '1rem', display: 'grid' }}>
+              <div className="editor-config__section" style={{ margin: 0 }}>
+                <label className="editor-config__label">Position X</label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min="0"
+                    max="600"
+                    step="1"
+                    value={templateOptions.x}
+                    onChange={(e) => setTemplateOptions({ ...templateOptions, x: parseInt(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    className="editor-config__input"
+                    value={templateOptions.x}
+                    onChange={(e) => setTemplateOptions({ ...templateOptions, x: parseInt(e.target.value) || 0 })}
+                    style={{ width: '80px', margin: 0 }}
+                  />
+                </div>
+              </div>
+              <div className="editor-config__section" style={{ margin: 0 }}>
+                <label className="editor-config__label">Position Y</label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min="0"
+                    max="850"
+                    step="1"
+                    value={templateOptions.y}
+                    onChange={(e) => setTemplateOptions({ ...templateOptions, y: parseInt(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    className="editor-config__input"
+                    value={templateOptions.y}
+                    onChange={(e) => setTemplateOptions({ ...templateOptions, y: parseInt(e.target.value) || 0 })}
+                    style={{ width: '80px', margin: 0 }}
+                  />
+                </div>
+              </div>
+              <div className="editor-config__section" style={{ margin: 0 }}>
+                <label className="editor-config__label">Taille</label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="range"
+                    className="editor-config__slider"
+                    min="10"
+                    max="600"
+                    step="1"
+                    value={templateOptions.size}
+                    onChange={(e) => setTemplateOptions({ ...templateOptions, size: parseInt(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    className="editor-config__input"
+                    value={templateOptions.size}
+                    onChange={(e) => setTemplateOptions({ ...templateOptions, size: parseInt(e.target.value) || 0 })}
+                    style={{ width: '80px', margin: 0 }}
+                  />
+                </div>
+              </div>
+              {templateMimeType === 'application/pdf' && (
+                <div className="editor-config__section" style={{ margin: 0 }}>
+                  <label className="editor-config__label">Numéro de page</label>
+                  <input
+                    type="number"
+                    className="editor-config__input"
+                    value={templateOptions.pageIndex + 1}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      setTemplateOptions({ ...templateOptions, pageIndex: isNaN(val) ? 0 : Math.max(0, val - 1) })
+                    }}
+                    min="1"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="editor-config__placeholder">
           <p>🚧 Fonctionnalité en cours de développement</p>

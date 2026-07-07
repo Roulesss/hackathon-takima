@@ -10,6 +10,7 @@ interface QrForgeAPI {
     properties?: string[]
   }) => Promise<{ canceled: boolean; filePaths: string[] }>
   readFile: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>
+  readBinaryFile: (filePath: string) => Promise<{ success: boolean; data?: ArrayBuffer; error?: string }>
   writeFile: (
     filePath: string,
     content: string

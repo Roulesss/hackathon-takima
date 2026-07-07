@@ -12,6 +12,8 @@ const api = {
   // File system
   readFile: (filePath: string) =>
     ipcRenderer.invoke('fs:readFile', filePath),
+  readBinaryFile: (filePath: string) =>
+    ipcRenderer.invoke('fs:readBinaryFile', filePath),
   writeFile: (filePath: string, content: string) =>
     ipcRenderer.invoke('fs:writeFile', filePath, content),
   writeBinaryFile: (filePath: string, data: ArrayBuffer) =>

@@ -14,6 +14,10 @@ function App(): React.JSX.Element {
   const { config: qrConfig, setConfig: setQrConfig } = useQrConfig()
   const { projects, deleteProject } = useProjects()
 
+  const [templateBytes, setTemplateBytes] = useState<Uint8Array | null>(null)
+  const [templateMimeType, setTemplateMimeType] = useState<string>('application/pdf')
+  const [templateOptions, setTemplateOptions] = useState({ x: 50, y: 50, size: 150, pageIndex: 0 })
+
   const navigate = (page: string, data?: Record<string, unknown>): void => {
     setCurrentPage(page as PageId)
     if (data?.activity) {
@@ -48,12 +52,26 @@ function App(): React.JSX.Element {
             initialActivity={currentActivity}
             qrConfig={qrConfig}
             onConfigChange={setQrConfig}
+            templateBytes={templateBytes}
+            setTemplateBytes={setTemplateBytes}
+            templateMimeType={templateMimeType}
+            setTemplateMimeType={setTemplateMimeType}
+            templateOptions={templateOptions}
+            setTemplateOptions={setTemplateOptions}
           />
         )
       case 'scanner':
         return <ScannerPage onNavigate={navigate} />
       case 'export':
-        return <ExportPage onNavigate={navigate} qrConfig={qrConfig} />
+        return (
+          <ExportPage
+            onNavigate={navigate}
+            qrConfig={qrConfig}
+            templateBytes={templateBytes}
+            templateMimeType={templateMimeType}
+            templateOptions={templateOptions}
+          />
+        )
       default:
         return (
           <HomePage

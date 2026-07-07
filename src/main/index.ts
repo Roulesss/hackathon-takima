@@ -16,7 +16,8 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      plugins: true
     }
   })
 
@@ -63,6 +64,16 @@ ipcMain.handle('fs:readFile', async (_event, filePath: string) => {
   try {
     const data = await readFile(filePath)
     return { success: true, data: data.toString('utf-8') }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+})
+
+// Read binary file
+ipcMain.handle('fs:readBinaryFile', async (_event, filePath: string) => {
+  try {
+    const data = await readFile(filePath)
+    return { success: true, data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) }
   } catch (err) {
     return { success: false, error: (err as Error).message }
   }

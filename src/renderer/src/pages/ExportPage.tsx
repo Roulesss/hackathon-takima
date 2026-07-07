@@ -5,12 +5,15 @@ import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Card } from '@renderer/components/common'
 import { useExport } from '@renderer/hooks'
 import type { QrConfig, ExportFormat } from '@renderer/types'
-import { createQrInstance } from '@renderer/utils'
+import { createQrInstance, exportQrAsBlob, addQrToPdf, addQrToImage } from '@renderer/utils'
 import './ExportPage.css'
 
 interface ExportPageProps {
   onNavigate: (page: string, data?: Record<string, unknown>) => void
   qrConfig: QrConfig
+  templateBytes: Uint8Array | null
+  templateMimeType?: string
+  templateOptions: { x: number; y: number; size: number; pageIndex: number }
 }
 
 const FORMAT_OPTIONS: Array<{
@@ -24,12 +27,14 @@ const FORMAT_OPTIONS: Array<{
   { format: 'pdf', icon: FileText, title: 'PDF', description: 'Document prêt à imprimer' }
 ]
 
-export function ExportPage({ onNavigate, qrConfig }: ExportPageProps): React.JSX.Element {
+export function ExportPage({ onNavigate, qrConfig, templateBytes, templateMimeType, templateOptions }: ExportPageProps): React.JSX.Element {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('png')
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
   const [batchZip, setBatchZip] = useState(false)
   const { exportQr, exporting, error } = useExport()
   const qrRef = useRef<HTMLDivElement>(null)
+  
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
 
   const renderQr = useCallback(() => {
     if (!qrRef.current) return
@@ -42,15 +47,75 @@ export function ExportPage({ onNavigate, qrConfig }: ExportPageProps): React.JSX
     renderQr()
   }, [renderQr])
 
+  useEffect(() => {
+    let active = true
+    const updatePreview = async () => {
+      if (templateBytes && templateMimeType && ((selectedFormat === 'pdf' && templateMimeType === 'application/pdf') || (selectedFormat === 'png' && templateMimeType.startsWith('image/')))) {
+        try {
+          const pngBlob = await exportQrAsBlob(qrConfig, 'png')
+          if (!pngBlob) return
+          const arrayBuffer = await pngBlob.arrayBuffer()
+          
+          if (templateMimeType === 'application/pdf') {
+            const pdfBytes = await addQrToPdf(
+              templateBytes,
+              new Uint8Array(arrayBuffer),
+              templateOptions
+            )
+            if (!active) return
+            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' })
+            const url = URL.createObjectURL(blob)
+            setPdfPreviewUrl(`${url}#page=${templateOptions.pageIndex + 1}`)
+          } else {
+            const imgBytes = await addQrToImage(
+              templateBytes,
+              new Uint8Array(arrayBuffer),
+              templateOptions,
+              templateMimeType
+            )
+            if (!active) return
+            const blob = new Blob([imgBytes as any], { type: templateMimeType })
+            const url = URL.createObjectURL(blob)
+            setPdfPreviewUrl(url)
+          }
+        } catch (e) {
+          console.error('Preview error', e)
+        }
+      } else {
+        setPdfPreviewUrl(null)
+      }
+    }
+    updatePreview()
+    return () => {
+      active = false
+    }
+  }, [templateBytes, templateMimeType, templateOptions, qrConfig, selectedFormat])
+
   const handleExport = (): void => {
-    exportQr(qrConfig, selectedFormat)
+    if (templateBytes && templateMimeType) {
+      exportQr(qrConfig, selectedFormat, undefined, {
+        templateBytes: templateBytes,
+        templateMimeType: templateMimeType,
+        ...templateOptions
+      })
+    } else {
+      exportQr(qrConfig, selectedFormat)
+    }
   }
 
   const leftPanel = (
     <div className="export-preview">
-      <div className="export-preview__qr-container">
-        <div ref={qrRef} className="export-preview__qr" />
-      </div>
+      {templateBytes && pdfPreviewUrl ? (
+        <div className="export-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="Document Preview">
+            <p>Impossible d'afficher l'aperçu</p>
+          </iframe>
+        </div>
+      ) : (
+        <div className="export-preview__qr-container">
+          <div ref={qrRef} className="export-preview__qr" />
+        </div>
+      )}
       <div className="export-preview__info">
         <div className="export-preview__info-row">
           <span className="export-preview__info-label">URL</span>
