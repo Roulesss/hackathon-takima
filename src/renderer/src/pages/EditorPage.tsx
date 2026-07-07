@@ -256,10 +256,10 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         cornerDotStyle: 'dot',
         colors: {
           ...qrConfig.style.colors,
-          foreground: '#000000',
+          foreground: '#333333',
           background: '#ffffff',
-          cornerSquareColor: '#000000',
-          cornerDotColor: '#000000'
+          cornerSquareColor: '#333333',
+          cornerDotColor: '#333333'
         }
       },
       logo: undefined
@@ -273,15 +273,16 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
       ...bcConfig,
       backgroundType: 'solid',
       backgroundColor: '#ffffff',
-      textColor: '#000000',
-      accentColor: '#333333',
-      nameFontFamily: 'Arial',
-      descFontFamily: 'Arial',
-      nameFontSize: 32,
-      descFontSize: 18,
+      textColor: '#333333',
+      accentColor: '#555555',
+      nameFontFamily: 'Raleway',
+      descFontFamily: 'Courier Prime',
+      nameFontSize: 52,
+      descFontSize: 28,
       showBorder: false,
       borderWidth: 1,
-      borderColor: '#000000'
+      borderColor: '#000000',
+      iconStyle: 'circle'
     })
     
     onConfigChange({
@@ -293,10 +294,10 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         cornerDotStyle: 'dot',
         colors: {
           ...qrConfig.style.colors,
-          foreground: '#000000',
+          foreground: '#333333',
           background: '#ffffff',
-          cornerSquareColor: '#000000',
-          cornerDotColor: '#000000'
+          cornerSquareColor: '#333333',
+          cornerDotColor: '#333333'
         }
       },
       logo: undefined
@@ -804,6 +805,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                     <option value="Montserrat">Montserrat</option>
                     <option value="Arial">Arial</option>
                     <option value="Times New Roman">Times</option>
+                    <option value="Courier Prime">Courier Prime (Eco)</option>
+                    <option value="Raleway">Raleway (Eco)</option>
                   </select>
                 </div>
                 <div>
@@ -833,6 +836,8 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                     <option value="Montserrat">Montserrat</option>
                     <option value="Arial">Arial</option>
                     <option value="Times New Roman">Times</option>
+                    <option value="Courier Prime">Courier Prime (Eco)</option>
+                    <option value="Raleway">Raleway (Eco)</option>
                   </select>
                 </div>
                 <div>
