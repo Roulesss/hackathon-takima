@@ -61,6 +61,12 @@ function App(): React.JSX.Element {
             templateOptions={templateOptions}
             setTemplateOptions={setTemplateOptions}
             onSaveProject={addProject}
+            templateBytes={templateBytes}
+            setTemplateBytes={setTemplateBytes}
+            templateMimeType={templateMimeType}
+            setTemplateMimeType={setTemplateMimeType}
+            templateOptions={templateOptions}
+            setTemplateOptions={setTemplateOptions}
           />
         )
       case 'scanner':
