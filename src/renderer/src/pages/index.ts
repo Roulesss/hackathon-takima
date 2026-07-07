@@ -1,0 +1,5 @@
+export { HomePage } from './HomePage'
+export { ActivityChoicePage } from './ActivityChoicePage'
+export { EditorPage } from './EditorPage'
+export { ScannerPage } from './ScannerPage'
+export { ExportPage } from './ExportPage'

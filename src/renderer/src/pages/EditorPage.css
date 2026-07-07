@@ -1,0 +1,219 @@
+.editor {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor__body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.editor__footer {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-bg-primary);
+}
+
+/* Preview Panel */
+.editor-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  gap: var(--space-4);
+}
+
+.editor-preview__qr-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  min-height: 200px;
+  padding: var(--space-5);
+}
+
+.editor-preview__qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-preview__qr canvas,
+.editor-preview__qr svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.editor-preview__warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  width: 100%;
+}
+
+.editor-preview__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  width: 100%;
+}
+
+.editor-preview__ratio {
+  margin-left: auto;
+  opacity: 0.7;
+  font-size: var(--font-size-xs);
+}
+
+.editor-preview__actions {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Config Panel */
+.editor-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.editor-config__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.editor-config__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.editor-config__input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  transition: border-color var(--transition-normal);
+}
+
+.editor-config__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.editor-config__input--url {
+  font-size: var(--font-size-lg);
+  padding: var(--space-3) var(--space-4);
+}
+
+.editor-config__slider {
+  width: 100%;
+  accent-color: var(--color-accent);
+  height: 4px;
+}
+
+.editor-config__divider {
+  height: 1px;
+  background: var(--color-divider);
+  margin: var(--space-2) 0;
+}
+
+.editor-config__color-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.editor-config__color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.editor-config__color-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.editor-config__color-input {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 2px;
+  background: transparent;
+}
+
+.editor-config__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.editor-config__style-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.editor-config__style-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-transform: capitalize;
+}
+
+.editor-config__style-btn:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-hover);
+}
+
+.editor-config__style-btn--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.editor-config__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-9);
+  text-align: center;
+  color: var(--color-text-secondary);
+  gap: var(--space-2);
+}
+
+.editor-config__placeholder-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}

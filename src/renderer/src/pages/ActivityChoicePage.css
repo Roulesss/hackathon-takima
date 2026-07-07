@@ -1,0 +1,91 @@
+.activity-choice {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-7);
+  position: relative;
+}
+
+.activity-choice__back {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+}
+
+.activity-choice__content {
+  text-align: center;
+  width: 100%;
+  max-width: 900px;
+}
+
+.activity-choice__title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.activity-choice__subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-9);
+}
+
+.activity-choice__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.activity-choice__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-height: 220px;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.activity-choice__icon-wrapper {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-2);
+  transition: all var(--transition-normal);
+}
+
+.activity-choice__card:hover .activity-choice__icon-wrapper {
+  background: var(--color-accent-muted);
+  transform: scale(1.05);
+}
+
+.activity-choice__icon {
+  width: 32px;
+  height: 32px;
+  color: var(--color-accent);
+}
+
+.activity-choice__card-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.activity-choice__card-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-relaxed);
+}
+
+@media (max-width: 768px) {
+  .activity-choice__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

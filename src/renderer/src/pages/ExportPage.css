@@ -1,0 +1,180 @@
+.export-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.export-page__body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Preview */
+.export-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-5);
+}
+
+.export-preview__qr-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.export-preview__qr canvas,
+.export-preview__qr svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.export-preview__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.export-preview__info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.export-preview__info-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.export-preview__info-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Config */
+.export-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.export-config__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.export-config__formats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.export-config__format-card {
+  cursor: pointer;
+}
+
+.export-config__format-card--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.export-config__format-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.export-config__format-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-accent);
+}
+
+.export-config__format-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.export-config__format-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.export-config__divider {
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.export-config__batch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.export-config__batch-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.export-config__batch-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.export-config__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.export-config__input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+}
+
+.export-config__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.export-config__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.export-config__batch-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.export-config__error {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}

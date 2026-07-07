@@ -1,0 +1,32 @@
+.card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-normal);
+}
+
+.card--pad-sm {
+  padding: var(--space-3);
+}
+
+.card--pad-md {
+  padding: var(--space-4);
+}
+
+.card--pad-lg {
+  padding: var(--space-6);
+}
+
+.card--hoverable:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card--clickable {
+  cursor: pointer;
+}
+
+.card--clickable:active {
+  transform: scale(0.99);
+}
