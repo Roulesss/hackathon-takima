@@ -17,11 +17,15 @@ function App(): React.JSX.Element {
   const [templateBytes, setTemplateBytes] = useState<Uint8Array | null>(null)
   const [templateMimeType, setTemplateMimeType] = useState<string>('application/pdf')
   const [templateOptions, setTemplateOptions] = useState([{ x: 50, y: 50, size: 150, pageIndex: 0 }])
+  const [batchDocumentMode, setBatchDocumentMode] = useState<'individual' | 'merged'>('individual')
 
   const navigate = (page: string, data?: Record<string, unknown>): void => {
     setCurrentPage(page as PageId)
     if (data?.activity) {
       setCurrentActivity(data.activity as ActivityType)
+    }
+    if (data?.batchDocumentMode) {
+      setBatchDocumentMode(data.batchDocumentMode as 'individual' | 'merged')
     }
     if (data?.config) {
       setQrConfig(data.config as any)
@@ -80,6 +84,7 @@ function App(): React.JSX.Element {
             templateBytes={templateBytes}
             templateMimeType={templateMimeType}
             templateOptions={templateOptions}
+            batchDocumentMode={batchDocumentMode}
           />
         )
       default:

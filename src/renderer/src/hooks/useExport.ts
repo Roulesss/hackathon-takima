@@ -11,6 +11,7 @@ export interface TemplateExportOptions {
   templateMimeType?: string
   templateOptionsArray?: { x: number; y: number; size: number; pageIndex: number }[]
   batchNaming?: string
+  batchDocumentMode?: 'individual' | 'merged'
 }
 
 export function useExport() {
@@ -36,8 +37,8 @@ export function useExport() {
         
         if (urls.length > 1) {
           // Batch export
-          if (options?.templateBytes && options.templateMimeType) {
-            // SINGLE FILE WITH MULTIPLE QR CODES
+          if (options?.templateBytes && options.templateMimeType && options.batchDocumentMode !== 'individual') {
+            // SINGLE FILE WITH MULTIPLE QR CODES (MERGED MODE)
             let currentBytes = options.templateBytes
             for (let i = 0; i < urls.length; i++) {
               const batchConfig = { ...config, url: urls[i] }
@@ -68,15 +69,32 @@ export function useExport() {
               downloadBlob(blob, defaultFilename)
             }
           } else {
-            // STANDARD BATCH EXPORT (ZIP of individual files)
+            // STANDARD BATCH EXPORT (ZIP of individual files), OR INDIVIDUAL DOCUMENT MODE
             if (window.api && window.api.saveFileDialog) {
               const zip = new JSZip()
               for (let i = 0; i < urls.length; i++) {
                 const batchConfig = { ...config, url: urls[i] }
                 let blob: Blob | null | undefined = null
-                let fileExtension = format
+                let fileExtension: string = format
   
-                if (format === 'svg') {
+                if (options?.templateBytes && options.templateMimeType) {
+                  // Individual document mode: 1 QR code per document copy
+                  const pngBlob = await exportQrAsBlob(batchConfig, 'png')
+                  if (pngBlob) {
+                    const arrayBuffer = await pngBlob.arrayBuffer()
+                    const opt = options.templateOptionsArray?.[i] || options.templateOptionsArray?.[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+                    
+                    let finalBytes: Uint8Array;
+                    if (options.templateMimeType === 'application/pdf') {
+                      finalBytes = await addQrToPdf(options.templateBytes, new Uint8Array(arrayBuffer), opt)
+                      fileExtension = 'pdf'
+                    } else {
+                      finalBytes = await addQrToImage(options.templateBytes, new Uint8Array(arrayBuffer), { x: opt.x, y: opt.y, size: opt.size }, options.templateMimeType)
+                      fileExtension = options.templateMimeType === 'image/jpeg' ? 'jpg' : 'png'
+                    }
+                    blob = new Blob([finalBytes as any], { type: options.templateMimeType })
+                  }
+                } else if (format === 'svg') {
                   blob = await exportQrAsBlob(batchConfig, 'svg')
                 } else if (format === 'png') {
                   blob = await exportQrAsBlob(batchConfig, 'png')
@@ -110,9 +128,26 @@ export function useExport() {
               for (let i = 0; i < urls.length; i++) {
                 const batchConfig = { ...config, url: urls[i] }
                 let blob: Blob | null | undefined = null
-                let fileExtension = format
+                let fileExtension: string = format
                 
-                if (format === 'svg') {
+                if (options?.templateBytes && options.templateMimeType) {
+                  // Individual document mode: 1 QR code per document copy
+                  const pngBlob = await exportQrAsBlob(batchConfig, 'png')
+                  if (pngBlob) {
+                    const arrayBuffer = await pngBlob.arrayBuffer()
+                    const opt = options.templateOptionsArray?.[i] || options.templateOptionsArray?.[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+                    
+                    let finalBytes: Uint8Array;
+                    if (options.templateMimeType === 'application/pdf') {
+                      finalBytes = await addQrToPdf(options.templateBytes, new Uint8Array(arrayBuffer), opt)
+                      fileExtension = 'pdf'
+                    } else {
+                      finalBytes = await addQrToImage(options.templateBytes, new Uint8Array(arrayBuffer), { x: opt.x, y: opt.y, size: opt.size }, options.templateMimeType)
+                      fileExtension = options.templateMimeType === 'image/jpeg' ? 'jpg' : 'png'
+                    }
+                    blob = new Blob([finalBytes as any], { type: options.templateMimeType })
+                  }
+                } else if (format === 'svg') {
                   blob = await exportQrAsBlob(batchConfig, 'svg')
                 } else if (format === 'png') {
                   blob = await exportQrAsBlob(batchConfig, 'png')
