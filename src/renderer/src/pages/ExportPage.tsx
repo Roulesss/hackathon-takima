@@ -19,6 +19,7 @@ interface ExportPageProps {
   templateBytes: Uint8Array | null
   templateMimeType?: string
   templateOptions: { x: number; y: number; size: number; pageIndex: number }[]
+  batchDocumentMode?: 'individual' | 'merged'
 }
 
 const FORMAT_OPTIONS: Array<{
@@ -32,7 +33,7 @@ const FORMAT_OPTIONS: Array<{
   { format: 'pdf', icon: FileText, title: 'PDF', description: 'Document prêt à imprimer' }
 ]
 
-export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityType, templateBytes, templateMimeType, templateOptions }: ExportPageProps): React.JSX.Element {
+export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityType, templateBytes, templateMimeType, templateOptions, batchDocumentMode = 'individual' }: ExportPageProps): React.JSX.Element {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('png')
   const [batchNaming, setBatchNaming] = useState('qr_{index}')
   const [bcResolution, setBcResolution] = useState<number>(2)
@@ -69,11 +70,12 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
       if (templateBytes && templateMimeType && ((selectedFormat === 'pdf' && templateMimeType === 'application/pdf') || (selectedFormat === 'png' && templateMimeType.startsWith('image/')))) {
         try {
           const urls = qrConfig.batchUrls && qrConfig.batchUrls.length > 0 ? qrConfig.batchUrls : [qrConfig.url]
+          const urlsToRender = batchDocumentMode === 'individual' ? [urls[0]] : urls
           
           if (templateMimeType === 'application/pdf') {
             let currentPdfBytes = templateBytes
-            for (let i = 0; i < urls.length; i++) {
-              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
+            for (let i = 0; i < urlsToRender.length; i++) {
+              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urlsToRender[i] }, 'png')
               if (!pngBlob) continue
               const arrayBuffer = await pngBlob.arrayBuffer()
               const opt = templateOptions[i] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
@@ -90,8 +92,8 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
             setPdfPreviewUrl(`${url}#page=${firstOpt.pageIndex + 1}`)
           } else {
             let currentImgBytes = templateBytes
-            for (let i = 0; i < urls.length; i++) {
-              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
+            for (let i = 0; i < urlsToRender.length; i++) {
+              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urlsToRender[i] }, 'png')
               if (!pngBlob) continue
               const arrayBuffer = await pngBlob.arrayBuffer()
               const opt = templateOptions[i] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
@@ -210,11 +212,12 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
         setLocalExporting(false)
       }
     } else if (activityType === 'document' && templateBytes && templateMimeType) {
-      exportQr(qrConfig, selectedFormat, undefined, {
-        templateBytes: templateBytes,
-        templateMimeType: templateMimeType,
-        batchNaming,
-        templateOptionsArray: templateOptions
+      await exportQr(qrConfig, selectedFormat, 'document-batch', {
+        templateBytes,
+        templateMimeType,
+        templateOptionsArray: templateOptions,
+        batchDocumentMode,
+        batchNaming
       })
     } else {
       exportQr(qrConfig, selectedFormat, undefined, {

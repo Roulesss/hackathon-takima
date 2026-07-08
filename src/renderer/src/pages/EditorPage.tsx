@@ -1,13 +1,19 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon, Leaf, Cuboid, Layers } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon, Leaf, Cuboid, Layers, Undo, Redo } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
 import { Button, IconButton, Tabs, SettingsModal } from '@renderer/components/common'
-import { createQrInstance, checkContrast, exportQrAsBlob, exportQrAsDataUrl, addQrToPdf, addQrToImage } from '@renderer/utils'
-import { useBusinessCardConfig } from '@renderer/hooks'
+import { createQrInstance, checkContrast, exportQrAsDataUrl } from '@renderer/utils'
+import { useBusinessCardConfig, useUndoRedo } from '@renderer/hooks'
 import { BusinessCardPreview } from '@renderer/components/business-card/BusinessCardPreview'
 import { BusinessCard3DPreview } from '@renderer/components/business-card/BusinessCard3DPreview'
 import type { QrConfig, DotStyle, CornerStyle, CornerDotStyle, ActivityType, ProjectConfig } from '@renderer/types'
+import { Document, Page, pdfjs } from 'react-pdf'
+import 'react-pdf/dist/Page/AnnotationLayer.css'
+import 'react-pdf/dist/Page/TextLayer.css'
+
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
 
 import './EditorPage.css'
 
@@ -21,7 +27,7 @@ interface EditorPageProps {
   templateMimeType: string
   setTemplateMimeType: (mimeType: string) => void
   templateOptions: { x: number; y: number; size: number; pageIndex: number }[]
-  setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }[]) => void
+  setTemplateOptions: (options: { x: number; y: number; size: number; pageIndex: number }[] | ((prev: { x: number; y: number; size: number; pageIndex: number }[]) => { x: number; y: number; size: number; pageIndex: number }[])) => void
   onSaveProject?: (project: ProjectConfig) => void
   businessCardConfig?: import('@renderer/types').BusinessCardConfig
   onBusinessCardConfigChange?: (config: import('@renderer/types').BusinessCardConfig) => void
@@ -53,6 +59,86 @@ const QrThumbnail = ({ config, url }: { config: QrConfig, url: string }) => {
   )
 }
 
+const DraggableQrCode = ({ opt, updateOpt, templateDimensions, qrConfig, url }: any) => {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const isDragging = useRef(false)
+
+  useEffect(() => {
+    let active = true
+    exportQrAsDataUrl({ ...qrConfig, url, size: 400, margin: 0 }).then(dataUrl => {
+      if (active) setQrDataUrl(dataUrl)
+    }).catch(console.error)
+    return () => { active = false }
+  }, [qrConfig, url])
+
+  const percentX = (opt.x / templateDimensions.width) * 100
+  const percentY = (opt.y / templateDimensions.height) * 100
+  const percentSize = (opt.size / templateDimensions.width) * 100
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    isDragging.current = true
+
+    const container = e.currentTarget.parentElement
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    const startMouseX = e.clientX
+    const startMouseY = e.clientY
+    const startOptX = opt.x
+    const startOptY = opt.y
+
+    const onMouseMove = (moveEv: MouseEvent) => {
+      if (!isDragging.current) return
+      const dx = moveEv.clientX - startMouseX
+      const dy = moveEv.clientY - startMouseY
+      const dxInOriginal = (dx / rect.width) * templateDimensions.width
+      const dyInOriginal = (dy / rect.height) * templateDimensions.height
+      const newX = Math.max(0, Math.min(templateDimensions.width, Math.round(startOptX + dxInOriginal)))
+      const newY = Math.max(0, Math.min(templateDimensions.height, Math.round(startOptY + dyInOriginal)))
+      updateOpt({ x: newX, y: newY })
+    }
+
+    const onMouseUp = () => {
+      isDragging.current = false
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [opt.x, opt.y, templateDimensions, updateOpt])
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      style={{
+        position: 'absolute',
+        left: `${percentX}%`,
+        top: `${percentY}%`,
+        width: `${percentSize}%`,
+        aspectRatio: '1',
+        transform: 'translate(-50%, -50%)',
+        cursor: 'move',
+        zIndex: 10,
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        touchAction: 'none'
+      }}
+    >
+      {qrDataUrl && (
+        <img
+          src={qrDataUrl}
+          alt="QR Code"
+          draggable={false}
+          style={{ width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none' }}
+        />
+      )}
+    </div>
+  )
+}
+
 export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const {
   onNavigate,
@@ -73,9 +159,9 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
   const [useCustomCornerDotColor, setUseCustomCornerDotColor] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [batchUrls, setBatchUrls] = useState<string[]>(qrConfig.batchUrls || [])
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const [is3DMode, setIs3DMode] = useState(false)
-  const [debouncedTemplateOptions, setDebouncedTemplateOptions] = useState(templateOptions)
+  const [batchDocumentMode, setBatchDocumentMode] = useState<'individual' | 'merged'>('individual')
+  const [syncPositions, setSyncPositions] = useState(false)
   const { config: bcConfigLocal, setConfig: setBcConfigLocal } = useBusinessCardConfig()
   const bcConfig = props.businessCardConfig || bcConfigLocal
   const setBcConfig = (newConfig: import('@renderer/types').BusinessCardConfig | ((prev: import('@renderer/types').BusinessCardConfig) => import('@renderer/types').BusinessCardConfig)) => {
@@ -90,24 +176,47 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
       props.onBusinessCardConfigChange(updatedConfig)
     }
   }
-  const [lastModifiedIndex, setLastModifiedIndex] = useState<number>(0)
+  const [, setLastModifiedIndex] = useState<number>(0)
   const [templateDimensions, setTemplateDimensions] = useState<{width: number, height: number}>({ width: 600, height: 850 })
   const [previewIndex, setPreviewIndex] = useState(0)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [pdfNumPages, setPdfNumPages] = useState(1)
+  const [pdfPageDims, setPdfPageDims] = useState<{width: number, height: number}>({ width: 595, height: 842 })
+  const [currentPdfPage, setCurrentPdfPage] = useState(0)
+  const [pdfError, setPdfError] = useState<string | null>(null)
   const qrRef = useRef<HTMLDivElement>(null)
+
+  const { undo, redo, canUndo, canRedo } = useUndoRedo(
+    { qrConfig, bcConfig, templateOptions },
+    (newState) => {
+      onConfigChange(newState.qrConfig)
+      setBcConfig(newState.bcConfig)
+      setTemplateOptions(newState.templateOptions)
+    },
+    { debounceMs: 500, maxHistorySize: 50 }
+  )
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault()
+          redo()
+        } else {
+          e.preventDefault()
+          undo()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
     onNavigate('editor', { activity: tabId })
   }
 
-  useEffect(() => {
-    // Longer debounce for PDF to prevent continuous iframe reloading and zoom resets while dragging
-    const delay = templateMimeType === 'application/pdf' ? 500 : 50
-    const timer = setTimeout(() => {
-      setDebouncedTemplateOptions(templateOptions)
-    }, delay)
-    return () => clearTimeout(timer)
-  }, [templateOptions, templateMimeType])
 
   useEffect(() => {
     if (!templateBytes) return
@@ -139,6 +248,30 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     updateDims()
     return () => { active = false }
   }, [templateBytes, templateMimeType])
+
+  // Stable image preview URL: only changes when templateBytes changes, NOT on drag
+  useEffect(() => {
+    if (!templateBytes || templateMimeType === 'application/pdf') {
+      setImagePreviewUrl(null)
+      return
+    }
+    const blob = new Blob([templateBytes as any], { type: templateMimeType })
+    const url = URL.createObjectURL(blob)
+    setImagePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [templateBytes, templateMimeType])
+
+  // Stable PDF file object: prevents react-pdf from reloading and detaching the buffer on every render
+  const pdfFile = useMemo(() => {
+    if (!templateBytes || templateMimeType !== 'application/pdf') {
+      return null
+    }
+    // We make a copy of the buffer because pdf.js worker will transfer ownership and detach it.
+    // By memoizing the object, react-pdf only loads it once.
+    const dataCopy = new Uint8Array(templateBytes)
+    return { data: dataCopy }
+  }, [templateBytes, templateMimeType])
+
 
   useEffect(() => {
     const needed = Math.max(1, batchUrls.length)
@@ -173,62 +306,14 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     renderQr()
   }, [renderQr, activeTab])
 
-  useEffect(() => {
-    let active = true
-    const updatePreview = async () => {
-      if (activeTab === 'document' && templateBytes) {
-        try {
-          const urls = batchUrls.length > 0 ? batchUrls : [qrConfig.url]
-          
-          if (templateMimeType === 'application/pdf') {
-            let currentPdfBytes = templateBytes
-            for (let i = 0; i < urls.length; i++) {
-              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
-              if (!pngBlob) continue
-              const arrayBuffer = await pngBlob.arrayBuffer()
-              const opt = debouncedTemplateOptions[i] || debouncedTemplateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
-              currentPdfBytes = await addQrToPdf(
-                currentPdfBytes,
-                new Uint8Array(arrayBuffer),
-                opt
-              )
-            }
-            if (!active) return
-            const blob = new Blob([currentPdfBytes as any], { type: 'application/pdf' })
-            const url = URL.createObjectURL(blob)
-            const optToFocus = debouncedTemplateOptions[lastModifiedIndex] || debouncedTemplateOptions[0] || { pageIndex: 0 }
-            setPdfPreviewUrl(`${url}#page=${optToFocus.pageIndex + 1}`)
-          } else {
-            let currentImgBytes = templateBytes
-            for (let i = 0; i < urls.length; i++) {
-              const pngBlob = await exportQrAsBlob({ ...qrConfig, url: urls[i] }, 'png')
-              if (!pngBlob) continue
-              const arrayBuffer = await pngBlob.arrayBuffer()
-              const opt = debouncedTemplateOptions[i] || debouncedTemplateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
-              currentImgBytes = await addQrToImage(
-                currentImgBytes,
-                new Uint8Array(arrayBuffer),
-                opt,
-                templateMimeType
-              )
-            }
-            if (!active) return
-            const blob = new Blob([currentImgBytes as any], { type: templateMimeType })
-            const url = URL.createObjectURL(blob)
-            setPdfPreviewUrl(url)
-          }
-        } catch (e) {
-          console.error('Preview error', e)
-        }
-      } else {
-        setPdfPreviewUrl(null)
-      }
-    }
-    updatePreview()
-    return () => {
-      active = false
-    }
-  }, [activeTab, templateBytes, templateMimeType, debouncedTemplateOptions, qrConfig, batchUrls])
+
+  const onPdfLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
+    setPdfNumPages(numPages)
+  }, [])
+
+  const onPdfPageLoadSuccess = useCallback((page: any) => {
+    setPdfPageDims({ width: page.originalWidth, height: page.originalHeight })
+  }, [])
 
   const handleImportImage = async (field: 'iconUrl' | 'backgroundImageUrl') => {
     if (window.api && window.api.openFileDialog) {
@@ -391,7 +476,6 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     <div className="editor-preview">
       {activeTab === 'business-card' ? (
         <>
-
           {is3DMode ? (
             <BusinessCard3DPreview 
               config={bcConfig} 
@@ -406,11 +490,136 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
             />
           )}
         </>
-      ) : activeTab === 'document' && pdfPreviewUrl ? (
-        <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-          <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="PDF Preview">
-            <p>Impossible d'afficher le PDF</p>
-          </iframe>
+      ) : activeTab === 'document' && pdfFile && templateMimeType === 'application/pdf' ? (
+        <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'auto' }}>
+          <Document 
+            file={pdfFile} 
+            onLoadSuccess={onPdfLoadSuccess} 
+            onLoadError={(error) => setPdfError(error.message)}
+            loading={<p>Chargement du PDF...</p>}
+            error={<div style={{ color: 'red', maxWidth: '400px', padding: '20px', textAlign: 'center' }}>Erreur de chargement du PDF:<br/><br/><strong>{pdfError}</strong></div>}
+          >
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <Page
+                pageNumber={currentPdfPage + 1}
+                width={500}
+                onLoadSuccess={onPdfPageLoadSuccess}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+              />
+              {batchUrls.length > 1 && batchDocumentMode === 'merged' ? (
+                batchUrls.map((url, idx) => {
+                  const opt = templateOptions[idx] || templateOptions[0] || { pageIndex: 0 }
+                  if ((opt.pageIndex || 0) !== currentPdfPage) return null
+                  return (
+                    <DraggableQrCode
+                      key={idx}
+                      opt={opt}
+                      updateOpt={(newOpt: any) => {
+                        setTemplateOptions((prev: any) => {
+                          const newOptions = [...prev]
+                          newOptions[idx] = { ...newOptions[idx], ...newOpt }
+                          return newOptions
+                        })
+                        setLastModifiedIndex(idx)
+                      }}
+                      templateDimensions={pdfPageDims}
+                      qrConfig={qrConfig}
+                      url={url}
+                    />
+                  )
+                })
+              ) : (
+                (() => {
+                  const opt = templateOptions[previewIndex] || templateOptions[0] || { pageIndex: 0 }
+                  if ((opt.pageIndex || 0) !== currentPdfPage) return null
+                  return (
+                    <DraggableQrCode
+                      opt={templateOptions[previewIndex] || templateOptions[0]}
+                      updateOpt={(newOpt: any) => {
+                        setTemplateOptions((prev: any) => {
+                          const newOptions = [...prev]
+                          newOptions[previewIndex] = { ...newOptions[previewIndex], ...newOpt }
+                          if (syncPositions && batchDocumentMode === 'individual') {
+                            for (let i = 0; i < newOptions.length; i++) {
+                              if (i !== previewIndex) {
+                                newOptions[i] = { ...newOptions[i], ...newOpt }
+                              }
+                            }
+                          }
+                          return newOptions
+                        })
+                        setLastModifiedIndex(previewIndex)
+                      }}
+                      templateDimensions={pdfPageDims}
+                      qrConfig={qrConfig}
+                      url={(batchUrls.length > 0 ? batchUrls : [qrConfig.url])[previewIndex] || (batchUrls.length > 0 ? batchUrls[0] : qrConfig.url)}
+                    />
+                  )
+                })()
+              )}
+            </div>
+          </Document>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+            <Button
+              variant="ghost"
+              disabled={currentPdfPage <= 0}
+              onClick={() => setCurrentPdfPage(Math.max(0, currentPdfPage - 1))}
+            >← Page préc.</Button>
+            <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Page {currentPdfPage + 1} / {pdfNumPages}</span>
+            <Button
+              variant="ghost"
+              disabled={currentPdfPage >= pdfNumPages - 1}
+              onClick={() => setCurrentPdfPage(Math.min(pdfNumPages - 1, currentPdfPage + 1))}
+            >Page suiv. →</Button>
+          </div>
+        </div>
+      ) : activeTab === 'document' && imagePreviewUrl ? (
+        <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', overflow: 'hidden' }}>
+            <img src={imagePreviewUrl} alt="Preview" style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }} draggable={false} />
+            {batchUrls.length > 1 && batchDocumentMode === 'merged' ? (
+              batchUrls.map((url, idx) => (
+                <DraggableQrCode 
+                  key={idx}
+                  opt={templateOptions[idx] || templateOptions[0]} 
+                  updateOpt={(newOpt: any) => {
+                    setTemplateOptions((prev: any) => {
+                      const newOptions = [...prev]
+                      newOptions[idx] = { ...newOptions[idx], ...newOpt }
+                      return newOptions
+                    })
+                    setLastModifiedIndex(idx)
+                  }} 
+                  templateDimensions={templateDimensions}
+                  qrConfig={qrConfig}
+                  url={url}
+                />
+              ))
+            ) : (
+              <DraggableQrCode 
+                opt={templateOptions[previewIndex] || templateOptions[0]} 
+                updateOpt={(newOpt: any) => {
+                  setTemplateOptions((prev: any) => {
+                    const newOptions = [...prev]
+                    newOptions[previewIndex] = { ...newOptions[previewIndex], ...newOpt }
+                    if (syncPositions && batchDocumentMode === 'individual') {
+                      for (let i = 0; i < newOptions.length; i++) {
+                        if (i !== previewIndex) {
+                          newOptions[i] = { ...newOptions[i], ...newOpt }
+                        }
+                      }
+                    }
+                    return newOptions
+                  })
+                  setLastModifiedIndex(previewIndex)
+                }} 
+                templateDimensions={templateDimensions}
+                qrConfig={qrConfig}
+                url={(batchUrls.length > 0 ? batchUrls : [qrConfig.url])[previewIndex] || (batchUrls.length > 0 ? batchUrls[0] : qrConfig.url)}
+              />
+            )}
+          </div>
         </div>
       ) : (
         <div className="editor-preview__qr-container">
@@ -418,7 +627,7 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         </div>
       )}
       
-      {batchUrls.length > 1 && activeTab !== 'document' && (
+      {batchUrls.length > 1 && (activeTab !== 'document' || batchDocumentMode === 'individual') && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '16px', background: 'var(--background-secondary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           <Button disabled={previewIndex === 0} onClick={() => setPreviewIndex(p => Math.max(0, p - 1))} variant="secondary" style={{ padding: '8px' }}>Précédent</Button>
           <span style={{ fontSize: '14px', fontWeight: 600 }}>{previewIndex + 1} / {batchUrls.length}</span>
@@ -1083,143 +1292,211 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
                 </div>
               </div>
 
-              {Array.from({ length: Math.max(1, batchUrls.length) }).map((_, idx) => {
-                const urlLabel = batchUrls.length > 0 ? `QR Code n°${idx + 1} (${batchUrls[idx]})` : 'QR Code'
-                const opt = templateOptions[idx] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
-                
-                const updateOpt = (updates: Partial<typeof opt>) => {
-                  const newOptions = [...templateOptions]
-                  newOptions[idx] = { ...opt, ...updates }
-                  setTemplateOptions(newOptions)
-                  setLastModifiedIndex(idx)
-                }
-
-                return (
-                  <div key={idx} style={{ marginBottom: idx < Math.max(1, batchUrls.length) - 1 ? '32px' : '0' }}>
-                    <h3 className="editor-config__label" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <QrThumbnail config={qrConfig} url={batchUrls.length > 0 ? batchUrls[idx] : qrConfig.url} />
+              {batchUrls.length > 1 && (
+                <div className="editor-config__section" style={{ backgroundColor: 'var(--background-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
+                  <label className="editor-config__label" style={{ marginBottom: '12px' }}>Mode d'export en Lot (Batch)</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <label style={{ display: 'flex', gap: '8px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                      <input 
+                        type="radio" 
+                        name="batchDocumentMode" 
+                        value="individual" 
+                        checked={batchDocumentMode === 'individual'} 
+                        onChange={(e) => setBatchDocumentMode(e.target.value as 'individual' | 'merged')} 
+                        style={{ marginTop: '4px' }}
+                      />
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.8em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)' }}>Réglages pour</span>
-                        <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'none', marginTop: '2px' }}>{urlLabel}</span>
+                        <span style={{ fontWeight: 600, fontSize: '14px' }}>N documents séparés</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Exporte un fichier ZIP avec 1 document par QR code. Idéal pour des cartes de visite.</span>
                       </div>
-                    </h3>
+                    </label>
+                    {batchDocumentMode === 'individual' && (
+                      <label style={{ display: 'flex', gap: '8px', cursor: 'pointer', alignItems: 'center', marginLeft: '24px', marginTop: '-4px' }}>
+                        <input
+                          type="checkbox"
+                          checked={syncPositions}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked
+                            setSyncPositions(isChecked)
+                            if (isChecked) {
+                              setTemplateOptions(prev => {
+                                const first = prev[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+                                return prev.map(() => ({ ...first }))
+                              })
+                            }
+                          }}
+                        />
+                        <span style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>Mettre tous les QR codes à la même position</span>
+                      </label>
+                    )}
+                    <label style={{ display: 'flex', gap: '8px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                      <input 
+                        type="radio" 
+                        name="batchDocumentMode" 
+                        value="merged" 
+                        checked={batchDocumentMode === 'merged'} 
+                        onChange={(e) => setBatchDocumentMode(e.target.value as 'individual' | 'merged')} 
+                        style={{ marginTop: '4px' }}
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 600, fontSize: '14px' }}>1 document fusionné</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Exporte 1 seul document contenant tous les QR codes. Idéal pour un menu ou une affiche.</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
 
-                    <div className="editor-document__card">
-                      <div className="editor-document__card-header">
-                        <MoveHorizontal size={18} className="editor-document__card-icon" />
-                        Positionnement & Taille
-                      </div>
-
-                      <div className="editor-document__presets">
-                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(20 + opt.size / 2), y: Math.round(20 + opt.size / 2) })}>
-                          Haut Gauche
-                        </button>
-                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width - 20 - opt.size / 2), y: Math.round(20 + opt.size / 2) })}>
-                          Haut Droit
-                        </button>
-                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width / 2), y: Math.round(templateDimensions.height / 2) })}>
-                          Milieu
-                        </button>
-                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(20 + opt.size / 2), y: Math.round(templateDimensions.height - 20 - opt.size / 2) })}>
-                          Bas Gauche
-                        </button>
-                        <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width - 20 - opt.size / 2), y: Math.round(templateDimensions.height - 20 - opt.size / 2) })}>
-                          Bas Droit
-                        </button>
-                      </div>
+              {(() => {
+                const isSynced = syncPositions && batchDocumentMode === 'individual'
+                return (isSynced ? [null] : Array.from({ length: Math.max(1, batchUrls.length) })).map((_, idx) => {
+                  const urlLabel = (batchUrls.length > 0 && !isSynced) ? `QR Code n°${idx + 1} (${batchUrls[idx]})` : 'Tous les QR Codes'
+                  const opt = templateOptions[idx] || templateOptions[0] || { x: 50, y: 50, size: 150, pageIndex: 0 }
+                  
+                  const updateOpt = (updates: Partial<typeof opt>) => {
+                    setTemplateOptions(prev => {
+                      const newOptions = [...prev]
+                      newOptions[idx] = { ...opt, ...updates }
                       
-                      <div className="editor-document__slider-row">
-                        <div className="editor-document__slider-label">
-                          <MoveHorizontal size={14} className="editor-document__card-icon" /> X
-                        </div>
-                        <input
-                          type="range"
-                          className="editor-config__slider"
-                          min="0"
-                          max={templateDimensions.width}
-                          step="1"
-                          value={opt.x}
-                          onChange={(e) => updateOpt({ x: parseInt(e.target.value) || 0 })}
-                        />
-                        <input
-                          type="number"
-                          className="editor-config__input"
-                          value={opt.x}
-                          onChange={(e) => updateOpt({ x: parseInt(e.target.value) || 0 })}
-                          style={{ width: '70px', margin: 0, padding: '4px 8px' }}
-                        />
-                      </div>
+                      if (isSynced) {
+                        for (let i = 0; i < newOptions.length; i++) {
+                          if (i !== idx) {
+                            newOptions[i] = { ...newOptions[i], ...updates }
+                          }
+                        }
+                      }
+                      
+                      return newOptions
+                    })
+                    setLastModifiedIndex(idx)
+                  }
 
-                      <div className="editor-document__slider-row">
-                        <div className="editor-document__slider-label">
-                          <MoveVertical size={14} className="editor-document__card-icon" /> Y
+                  return (
+                    <div key={idx} style={{ marginBottom: idx < Math.max(1, batchUrls.length) - 1 ? '32px' : '0' }}>
+                      <h3 className="editor-config__label" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <QrThumbnail config={qrConfig} url={batchUrls.length > 0 ? batchUrls[idx] : qrConfig.url} />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.8em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)' }}>Réglages pour</span>
+                          <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'none', marginTop: '2px' }}>{urlLabel}</span>
                         </div>
-                        <input
-                          type="range"
-                          className="editor-config__slider"
-                          min="0"
-                          max={templateDimensions.height}
-                          step="1"
-                          value={opt.y}
-                          onChange={(e) => updateOpt({ y: parseInt(e.target.value) || 0 })}
-                        />
-                        <input
-                          type="number"
-                          className="editor-config__input"
-                          value={opt.y}
-                          onChange={(e) => updateOpt({ y: parseInt(e.target.value) || 0 })}
-                          style={{ width: '70px', margin: 0, padding: '4px 8px' }}
-                        />
-                      </div>
+                      </h3>
 
-                      <div className="editor-document__slider-row">
-                        <div className="editor-document__slider-label">
-                          <Maximize size={14} className="editor-document__card-icon" /> Taille
-                        </div>
-                        <input
-                          type="range"
-                          className="editor-config__slider"
-                          min="10"
-                          max={Math.max(10, Math.round(Math.min(templateDimensions.width, templateDimensions.height)))}
-                          step="1"
-                          value={opt.size}
-                          onChange={(e) => updateOpt({ size: parseInt(e.target.value) || 0 })}
-                        />
-                        <input
-                          type="number"
-                          className="editor-config__input"
-                          value={opt.size}
-                          onChange={(e) => updateOpt({ size: parseInt(e.target.value) || 0 })}
-                          style={{ width: '70px', margin: 0, padding: '4px 8px' }}
-                        />
-                      </div>
-                    </div>
-
-                    {templateMimeType === 'application/pdf' && (
-                      <div className="editor-document__card" style={{ marginTop: '16px' }}>
+                      <div className="editor-document__card">
                         <div className="editor-document__card-header">
-                          <FileText size={18} className="editor-document__card-icon" />
-                          Options PDF
+                          <MoveHorizontal size={18} className="editor-document__card-icon" />
+                          Positionnement & Taille
                         </div>
+                        
+                        {templateMimeType === 'application/pdf' && pdfNumPages > 1 && (
+                          <div className="editor-document__slider-row" style={{ marginTop: '12px', marginBottom: '16px' }}>
+                            <div className="editor-document__slider-label">
+                              <FileText size={14} className="editor-document__card-icon" /> Page
+                            </div>
+                            <select
+                              className="editor-config__input"
+                              value={opt.pageIndex || 0}
+                              onChange={(e) => {
+                                const newPage = parseInt(e.target.value, 10)
+                                updateOpt({ pageIndex: newPage })
+                                setCurrentPdfPage(newPage)
+                              }}
+                              style={{ padding: '4px 8px', width: '100px' }}
+                            >
+                              {Array.from({ length: pdfNumPages }).map((_, pIdx) => (
+                                <option key={pIdx} value={pIdx}>Page {pIdx + 1}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        <div className="editor-document__presets">
+                          <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(20 + opt.size / 2), y: Math.round(20 + opt.size / 2) })}>
+                            Haut Gauche
+                          </button>
+                          <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width - 20 - opt.size / 2), y: Math.round(20 + opt.size / 2) })}>
+                            Haut Droit
+                          </button>
+                          <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width / 2), y: Math.round(templateDimensions.height / 2) })}>
+                            Milieu
+                          </button>
+                          <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(20 + opt.size / 2), y: Math.round(templateDimensions.height - 20 - opt.size / 2) })}>
+                            Bas Gauche
+                          </button>
+                          <button className="editor-document__preset-btn" onClick={() => updateOpt({ x: Math.round(templateDimensions.width - 20 - opt.size / 2), y: Math.round(templateDimensions.height - 20 - opt.size / 2) })}>
+                            Bas Droit
+                          </button>
+                        </div>
+                        
                         <div className="editor-document__slider-row">
-                          <div className="editor-document__slider-label">Numéro de page</div>
+                          <div className="editor-document__slider-label">
+                            <MoveHorizontal size={14} className="editor-document__card-icon" /> X
+                          </div>
+                          <input
+                            type="range"
+                            className="editor-config__slider"
+                            min="0"
+                            max={templateDimensions.width}
+                            step="1"
+                            value={opt.x}
+                            onChange={(e) => updateOpt({ x: parseInt(e.target.value) || 0 })}
+                          />
                           <input
                             type="number"
                             className="editor-config__input"
-                            value={opt.pageIndex + 1}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value)
-                              updateOpt({ pageIndex: isNaN(val) ? 0 : Math.max(0, val - 1) })
-                            }}
-                            min="1"
-                            style={{ flex: 1, margin: 0 }}
+                            value={opt.x}
+                            onChange={(e) => updateOpt({ x: parseInt(e.target.value) || 0 })}
+                            style={{ width: '70px', margin: 0, padding: '4px 8px' }}
+                          />
+                        </div>
+
+                        <div className="editor-document__slider-row">
+                          <div className="editor-document__slider-label">
+                            <MoveVertical size={14} className="editor-document__card-icon" /> Y
+                          </div>
+                          <input
+                            type="range"
+                            className="editor-config__slider"
+                            min="0"
+                            max={templateDimensions.height}
+                            step="1"
+                            value={opt.y}
+                            onChange={(e) => updateOpt({ y: parseInt(e.target.value) || 0 })}
+                          />
+                          <input
+                            type="number"
+                            className="editor-config__input"
+                            value={opt.y}
+                            onChange={(e) => updateOpt({ y: parseInt(e.target.value) || 0 })}
+                            style={{ width: '70px', margin: 0, padding: '4px 8px' }}
+                          />
+                        </div>
+
+                        <div className="editor-document__slider-row">
+                          <div className="editor-document__slider-label">
+                            <Maximize size={14} className="editor-document__card-icon" /> Taille
+                          </div>
+                          <input
+                            type="range"
+                            className="editor-config__slider"
+                            min="10"
+                            max={Math.max(10, Math.round(Math.min(templateDimensions.width, templateDimensions.height)))}
+                            step="1"
+                            value={opt.size}
+                            onChange={(e) => updateOpt({ size: parseInt(e.target.value) || 0 })}
+                          />
+                          <input
+                            type="number"
+                            className="editor-config__input"
+                            value={opt.size}
+                            onChange={(e) => updateOpt({ size: parseInt(e.target.value) || 0 })}
+                            style={{ width: '70px', margin: 0, padding: '4px 8px' }}
                           />
                         </div>
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    </div>
+                  )
+                })
+              })()}
             </>
           )}
         </div>
@@ -1234,22 +1511,28 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     </div>
   )
 
+  // Undo/Redo is handled at the top of the component
+
   return (
     <div className="editor page-enter page-active">
       <Toolbar
         left={
-          <IconButton
-            icon={ArrowLeft}
-            onClick={() => onNavigate('home')}
-            tooltip="Retour"
-          />
+          <Button variant="ghost" icon={ArrowLeft} onClick={() => onNavigate('activity-choice')}>
+            Retour
+          </Button>
         }
         center={
-          <Tabs
-            tabs={ACTIVITY_TABS}
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '4px', marginRight: '16px' }}>
+              <IconButton icon={Undo} onClick={undo} disabled={!canUndo} tooltip="Annuler (Ctrl+Z)" />
+              <IconButton icon={Redo} onClick={redo} disabled={!canRedo} tooltip="Rétablir (Ctrl+Shift+Z)" />
+            </div>
+            <Tabs
+              tabs={ACTIVITY_TABS}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
+          </div>
         }
         right={
           <div style={{ display: 'flex', gap: '4px' }}>
@@ -1312,7 +1595,7 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         <Button
           variant="primary"
           icon={Download}
-          onClick={() => onNavigate('export')}
+          onClick={() => onNavigate('export', { batchDocumentMode })}
         >
           Exporter
         </Button>
