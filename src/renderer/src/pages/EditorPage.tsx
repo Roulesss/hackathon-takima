@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ArrowLeft, Save, Settings, QrCode, CreditCard, FileImage, Download, AlertTriangle, Check, Plus, Trash2, UploadCloud, MoveHorizontal, MoveVertical, Maximize, FileText, Image as ImageIcon, Leaf, Cuboid, Layers, Undo, Redo } from 'lucide-react'
 import { Toolbar } from '@renderer/components/layout'
 import { SplitLayout } from '@renderer/components/layout'
@@ -261,16 +261,17 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
     return () => URL.revokeObjectURL(url)
   }, [templateBytes, templateMimeType])
 
-  // Stable PDF file object: prevents react-pdf from reloading and detaching the buffer on every render
-  const pdfFile = useMemo(() => {
-    if (!templateBytes || templateMimeType !== 'application/pdf') {
-      return null
+  // Stable PDF file object: prevents react-pdf from reloading infinitely,
+  // but creates a new copy when the tab becomes active because pdf.js worker detaches the buffer.
+  const [pdfFile, setPdfFile] = useState<{data: Uint8Array} | null>(null)
+
+  useEffect(() => {
+    if (activeTab === 'document' && templateBytes && templateMimeType === 'application/pdf') {
+      setPdfFile({ data: new Uint8Array(templateBytes) })
+    } else if (activeTab !== 'document') {
+      setPdfFile(null)
     }
-    // We make a copy of the buffer because pdf.js worker will transfer ownership and detach it.
-    // By memoizing the object, react-pdf only loads it once.
-    const dataCopy = new Uint8Array(templateBytes)
-    return { data: dataCopy }
-  }, [templateBytes, templateMimeType])
+  }, [templateBytes, templateMimeType, activeTab])
 
 
   useEffect(() => {
