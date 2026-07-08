@@ -39,8 +39,12 @@ function App(): React.JSX.Element {
       resetQrConfig()
       resetBcConfig()
     }
+    if (page === 'home' || page === 'activity-choice') {
+      setTemplateBytes(null)
+      setTemplateMimeType('application/pdf')
+      setTemplateOptions([{ x: 50, y: 50, size: 150, pageIndex: 0 }])
+    }
   }
-
   const renderPage = (): React.JSX.Element => {
     switch (currentPage) {
       case 'home':

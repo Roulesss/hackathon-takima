@@ -67,7 +67,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
   useEffect(() => {
     let active = true
     const updatePreview = async () => {
-      if (templateBytes && templateMimeType && ((selectedFormat === 'pdf' && templateMimeType === 'application/pdf') || (selectedFormat === 'png' && templateMimeType.startsWith('image/')))) {
+      if (activityType === 'document' && templateBytes && templateMimeType && ((selectedFormat === 'pdf' && templateMimeType === 'application/pdf') || (selectedFormat === 'png' && templateMimeType.startsWith('image/')))) {
         try {
           const urls = qrConfig.batchUrls && qrConfig.batchUrls.length > 0 ? qrConfig.batchUrls : [qrConfig.url]
           const urlsToRender = batchDocumentMode === 'individual' ? [urls[0]] : urls
@@ -237,7 +237,7 @@ export function ExportPage({ onNavigate, qrConfig, businessCardConfig, activityT
             ref={bcRef}
           />
         </div>
-      ) : templateBytes && pdfPreviewUrl ? (
+      ) : activityType === 'document' && templateBytes && pdfPreviewUrl ? (
         <div className="export-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
           <iframe src={pdfPreviewUrl} width="100%" height="100%" style={{ flexGrow: 1, borderRadius: '12px', border: 'none' }} title="Document Preview">
             <p>Impossible d'afficher l'aperçu</p>

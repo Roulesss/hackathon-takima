@@ -229,7 +229,15 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
           const pages = pdfDoc.getPages()
           if (pages.length > 0 && active) {
             const { width, height } = pages[0].getSize()
-            setTemplateDimensions({ width: Math.round(width), height: Math.round(height) })
+            const w = Math.round(width)
+            const h = Math.round(height)
+            setTemplateDimensions({ width: w, height: h })
+            setTemplateOptions(prev => prev.map(opt => ({
+              ...opt,
+              x: Math.min(opt.x, w),
+              y: Math.min(opt.y, h),
+              size: Math.min(opt.size, Math.min(w, h))
+            })))
           }
         } catch (e) {
           console.error(e)
@@ -239,7 +247,15 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
         const url = URL.createObjectURL(blob)
         const img = new Image()
         img.onload = () => {
-          if (active) setTemplateDimensions({ width: img.width, height: img.height })
+          if (active) {
+            setTemplateDimensions({ width: img.width, height: img.height })
+            setTemplateOptions(prev => prev.map(opt => ({
+              ...opt,
+              x: Math.min(opt.x, img.width),
+              y: Math.min(opt.y, img.height),
+              size: Math.min(opt.size, Math.min(img.width, img.height))
+            })))
+          }
           URL.revokeObjectURL(url)
         }
         img.src = url
@@ -576,9 +592,9 @@ export function EditorPage(props: EditorPageProps): React.JSX.Element {
           </div>
         </div>
       ) : activeTab === 'document' && imagePreviewUrl ? (
-        <div className="editor-preview__pdf-container" style={{ width: '100%', height: '100%', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', overflow: 'hidden' }}>
-            <img src={imagePreviewUrl} alt="Preview" style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }} draggable={false} />
+        <div className="editor-preview__pdf-container" style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', aspectRatio: `${templateDimensions.width} / ${templateDimensions.height}`, display: 'flex', overflow: 'hidden' }}>
+            <img src={imagePreviewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} draggable={false} />
             {batchUrls.length > 1 && batchDocumentMode === 'merged' ? (
               batchUrls.map((url, idx) => (
                 <DraggableQrCode 
